@@ -163,7 +163,7 @@ app.get('/pass/apple/:card_id', async (req, res) => {
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
 
     const pass = await PKPass.from({
-      model: './passes/FidelEasy.pass',
+      model: '/app/passes/FidelEasy.pass',
       certificates: {
       wwdr: Buffer.from(process.env.PASS_WWDR, 'base64'),
 signerCert: Buffer.from(process.env.PASS_CERT, 'base64'),
