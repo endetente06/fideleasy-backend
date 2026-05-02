@@ -153,7 +153,7 @@ app.get('/qrcode/:shop_id', async (req, res) => {
 });
 // Générer une vraie carte Apple Wallet
 app.get('/pass/apple/:card_id', async (req, res) => {
-  try {
+  try {console.log('PASS_CERT length:', process.env.PASS_CERT ? process.env.PASS_CERT.length : 'undefined');
     const { PKPass } = require('passkit-generator');
     const fs = require('fs');
     const { card_id } = req.params;
