@@ -165,9 +165,9 @@ app.get('/pass/apple/:card_id', async (req, res) => {
     const pass = await PKPass.from({
       model: '/app/passes/FidelEasy.pass',
       certificates: {
-     wwdr: Buffer.from(process.env.PASS_WWDR.replace(/\r\n/g, '\n'), 'base64'),
-signerCert: Buffer.from(process.env.PASS_CERT.replace(/\r\n/g, '\n'), 'base64'),
-signerKey: Buffer.from(process.env.PASS_KEY.replace(/\r\n/g, '\n'), 'base64'),
+     wwdr: Buffer.from(process.env.PASS_WWDR.replace(/\s/g, ''), 'base64'),
+signerCert: Buffer.from(process.env.PASS_CERT.replace(/\s/g, ''), 'base64'),
+signerKey: Buffer.from(process.env.PASS_KEY.replace(/\s/g, ''), 'base64'),
         signerKeyPassphrase: '123456'
       }
     }, {
