@@ -1,0 +1,35 @@
+{
+  "formatVersion": 1,
+  "passTypeIdentifier": "pass.com.fideLeasy",
+  "serialNumber": "001",
+  "teamIdentifier": "TONTEAMID",
+  "backgroundColor": "rgb(79, 110, 247)",
+  "foregroundColor": "rgb(255, 255, 255)",
+  "labelColor": "rgb(255, 255, 255)",
+  "logoText": "FidelEasy",
+  "organizationName": "FidelEasy",
+  "description": "Carte de fidelite FidelEasy",
+  "storeCard": {
+    "primaryFields": [
+      {
+        "key": "points",
+        "label": "Points",
+        "value": "0"
+      }
+    ],
+    "secondaryFields": [
+      {
+        "key": "stamps",
+        "label": "Tampons",
+        "value": "0/10"
+      }
+    ],
+    "auxiliaryFields": [
+      {
+        "key": "member",
+        "label": "Membre",
+        "value": "Sophie Martin"
+      }
+    ]
+  }
+}
