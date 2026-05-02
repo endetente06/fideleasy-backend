@@ -153,11 +153,11 @@ app.get('/qrcode/:shop_id', async (req, res) => {
 });
 // Générer une vraie carte Apple Wallet
 app.get('/pass/apple/:card_id', async (req, res) => {
-  try {console.log('PASS_CERT length:', process.env.PASS_CERT ? process.env.PASS_CERT.length : 'undefined');
+  try {
     const { PKPass } = require('passkit-generator');
     const fs = require('fs');
     const { card_id } = req.params;
-    console.log('CWD:', process.cwd());
+    
     const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
     const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
@@ -184,7 +184,7 @@ signerKey: Buffer.from(process.env.PASS_KEY.replace(/\r\n/g, '\n'), 'base64'),
     });
     res.send(buffer);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message, stack: err.stack });
   }
 });
 
