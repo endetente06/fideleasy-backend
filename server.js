@@ -151,6 +151,42 @@ app.get('/qrcode/:shop_id', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+// Générer une vraie carte Apple Wallet
+app.get('/pass/apple/:card_id', async (req, res) => {
+  try {
+    const { PKPass } = require('passkit-generator');
+    const fs = require('fs');
+    const { card_id } = req.params;
+    console.log('CWD:', process.cwd());
+    const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
+    const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
+    const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
+
+    const pass = await PKPass.from({
+      model: './passes/FidelEasy.pass',
+      certificates: {
+      wwdr: Buffer.from(process.env.PASS_WWDR, 'base64'),
+signerCert: Buffer.from(process.env.PASS_CERT, 'base64'),
+signerKey: Buffer.from(process.env.PASS_KEY, 'base64'),  
+        signerKeyPassphrase: '123456'
+      }
+    }, {
+      serialNumber: card_id,
+      'storeCard.primaryFields[0].value': card.points.toString(),
+      'storeCard.secondaryFields[0].value': `${card.stamps}/10`,
+      'storeCard.auxiliaryFields[0].value': customer ? customer.name : 'Client'
+    });
+
+    const buffer = pass.getAsBuffer();
+    res.set({
+      'Content-Type': 'application/vnd.apple.pkpass',
+      'Content-Disposition': `attachment; filename="fideLeasy.pkpass"`
+    });
+    res.send(buffer);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`FidelEasy API démarrée sur le port ${PORT}`);
