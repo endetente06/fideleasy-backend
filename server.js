@@ -187,7 +187,64 @@ signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
     res.status(400).json({ error: err.message, stack: err.stack });
   }
 });
+// Inscription commerçant
+app.post('/auth/register', async (req, res) => {
+  try {
+    const { email, password, shop_name } = req.body;
+    
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password
+    });
+    
+    if (authError) throw authError;
+    
+    const { data: shop, error: shopError } = await supabase
+      .from('shops')
+      .insert([{ 
+        name: shop_name, 
+        email, 
+        plan: 'starter',
+        user_id: authData.user.id 
+      }])
+      .select();
+    
+    if (shopError) throw shopError;
+    
+    res.json({ message: 'Compte créé !', user: authData.user, shop });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
+// Connexion commerçant
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    
+    if (error) throw error;
+    
+    const { data: shop } = await supabase
+      .from('shops')
+      .select('*')
+      .eq('user_id', data.user.id)
+      .single();
+    
+    res.json({ 
+      message: 'Connecté !', 
+      token: data.session.access_token,
+      user: data.user,
+      shop 
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 app.listen(PORT, () => {
   console.log(`FidelEasy API démarrée sur le port ${PORT}`);
 });
