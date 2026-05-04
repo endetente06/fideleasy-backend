@@ -244,6 +244,123 @@ app.post('/auth/login', async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});// Google Wallet
+const { GoogleAuth } = require('google-auth-library');
+
+const GOOGLE_ISSUER_ID = 'BCR2DN7T7C24DWR7';
+const GOOGLE_CLASS_ID = `${GOOGLE_ISSUER_ID}.fideleasy_loyalty`;
+
+async function getGoogleAuthClient() {
+  const auth = new GoogleAuth({
+  keyFile: 'C:/FidelEasy/certs/google-wallet-key.json',
+    scopes: ['https://www.googleapis.com/auth/wallet_object.issuer']
+  });
+  return auth.getClient();
+}
+
+app.get('/pass/google/:card_id', async (req, res) => {
+  try {
+    const { card_id } = req.params;
+    
+    const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
+    const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
+    const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
+
+    const authClient = await getGoogleAuthClient();
+    const token = await authClient.getAccessToken();
+
+    // Créer la classe si elle n'existe pas
+    try {
+      await fetch(`https://walletobjects.googleapis.com/walletobjects/v1/loyaltyClass/${GOOGLE_CLASS_ID}`, {
+        headers: { 'Authorization': `Bearer ${token.token}` }
+      }).then(async r => {
+        if (r.status === 404) {
+          await fetch('https://walletobjects.googleapis.com/walletobjects/v1/loyaltyClass', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token.token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: GOOGLE_CLASS_ID,
+              issuerName: 'FidelEasy',
+              programName: shop ? shop.name : 'FidelEasy',
+              programLogo: { sourceUri: { uri: 'https://via.placeholder.com/150x150.png' }, contentDescription: { defaultValue: { language: 'fr', value: 'Logo FidelEasy' } } },
+              reviewStatus: 'UNDER_REVIEW'
+            })
+          });
+        }
+      });
+    } catch(e) {}
+
+    // Créer l'objet pass
+    const objectId = `${GOOGLE_ISSUER_ID}.${card_id}`;
+    const passObject = {
+      id: objectId,
+      classId: GOOGLE_CLASS_ID,
+      state: 'ACTIVE',
+      accountId: customer ? customer.id : card_id,
+      accountName: customer ? customer.name : 'Client',
+      loyaltyPoints: { label: 'Points', balance: { int: card.points || 0 } },
+      secondaryLoyaltyPoints: { label: 'Tampons', balance: { string: `${card.stamps || 0}/10` } }
+    };
+
+    // Créer ou mettre à jour l'objet
+    const objRes = await fetch(`https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}`, {
+      headers: { 'Authorization': `Bearer ${token.token}` }
+    });
+    
+    if (objRes.status === 404) {
+      await fetch('https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(passObject)
+      });
+    }
+
+    // Générer le lien JWT
+    const jwt = require('jsonwebtoken');
+     const key = require('C:/FidelEasy/certs/google-wallet-key.json');
+    
+    const claims = {
+      iss: key.client_email,
+      aud: 'google',
+      typ: 'savetowallet',
+      payload: { loyaltyObjects: [{ id: objectId }] }
+    };
+    
+    const token_jwt = jwt.sign(claims, key.private_key, { algorithm: 'RS256' });
+    const saveUrl = `https://pay.google.com/gp/v/save/${token_jwt}`;
+    
+    res.json({ saveUrl });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});// Stripe
+const Stripe = require('stripe');
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
+const PLANS = {
+  starter: process.env.STRIPE_PRICE_STARTER,
+  pro: process.env.STRIPE_PRICE_PRO,
+  business: process.env.STRIPE_PRICE_BUSINESS
+};
+
+// Créer une session de paiement
+app.post('/stripe/checkout', async (req, res) => {
+  try {
+    const { plan, shop_id } = req.body;
+    
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      line_items: [{ price: PLANS[plan], quantity: 1 }],
+      success_url: 'https://fideleasy-dashboard.vercel.app/dashboard?success=true',
+      cancel_url: 'https://fideleasy-dashboard.vercel.app/dashboard?cancelled=true',
+      metadata: { shop_id, plan }
+    });
+    
+    res.json({ url: session.url });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 app.listen(PORT, () => {
   console.log(`FidelEasy API démarrée sur le port ${PORT}`);
