@@ -252,7 +252,7 @@ const GOOGLE_CLASS_ID = `${GOOGLE_ISSUER_ID}.fideleasy_loyalty`;
 
 async function getGoogleAuthClient() {
   const auth = new GoogleAuth({
-  keyFile: 'C:/FidelEasy/certs/google-wallet-key.json',
+ credentials: JSON.parse(Buffer.from(process.env.GOOGLE_WALLET_KEY, 'base64').toString()),
     scopes: ['https://www.googleapis.com/auth/wallet_object.issuer']
   });
   return auth.getClient();
@@ -317,7 +317,7 @@ app.get('/pass/google/:card_id', async (req, res) => {
 
     // Générer le lien JWT
     const jwt = require('jsonwebtoken');
-     const key = require('C:/FidelEasy/certs/google-wallet-key.json');
+     const key = JSON.parse(Buffer.from(process.env.GOOGLE_WALLET_KEY, 'base64').toString());
     
     const claims = {
       iss: key.client_email,
