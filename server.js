@@ -122,14 +122,32 @@ app.post('/cards/:id/stamp', async (req, res) => {
 app.post('/notifications', async (req, res) => {
   try {
     const { shop_id, title, message, target } = req.body;
+    
+    // Sauvegarder en base
     const { data, error } = await supabase.from('notifications').insert([{ shop_id, title, message, target, sent_count: 0 }]).select();
     if (error) throw error;
+
+    // Envoyer via OneSignal
+    await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Key ${process.env.ONESIGNAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        app_id: process.env.ONESIGNAL_APP_ID,
+        included_segments: ['All'],
+        headings: { en: title },
+        contents: { en: message }
+      })
+    });
+
     res.json({ message: 'Notification envoyée !', data });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
-
+  
 app.get('/notifications/:shop_id', async (req, res) => {
   try {
     const { shop_id } = req.params;
@@ -363,11 +381,10 @@ app.post('/stripe/checkout', async (req, res) => {
   }
 });// Notifications Push APNs
 const apn = require('@parse/node-apn');
-const path = require('path');
 
 const apnProvider = new apn.Provider({
   token: {
-    key: path.join('C:', 'FidelEasy', 'certs', 'AuthKey_JW6GJSYM9L.p8'),
+    key: '/app/certs/AuthKey_JW6GJSYM9L.p8',
     keyId: 'JW6GJSYM9L',
     teamId: 'Q7XBK68TWG'
   },
@@ -377,13 +394,11 @@ const apnProvider = new apn.Provider({
 app.post('/push/send', async (req, res) => {
   try {
     const { device_token, title, body } = req.body;
-    
     const notification = new apn.Notification();
     notification.alert = { title, body };
     notification.badge = 1;
     notification.sound = 'default';
     notification.topic = 'com.fideleasy.app';
-    
     const result = await apnProvider.send(notification, device_token);
     res.json({ message: 'Notification envoyée !', result });
   } catch (err) {
