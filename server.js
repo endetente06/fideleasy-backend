@@ -361,6 +361,34 @@ app.post('/stripe/checkout', async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});// Notifications Push APNs
+const apn = require('@parse/node-apn');
+const path = require('path');
+
+const apnProvider = new apn.Provider({
+  token: {
+    key: path.join('C:', 'FidelEasy', 'certs', 'AuthKey_JW6GJSYM9L.p8'),
+    keyId: 'JW6GJSYM9L',
+    teamId: 'Q7XBK68TWG'
+  },
+  production: false
+});
+
+app.post('/push/send', async (req, res) => {
+  try {
+    const { device_token, title, body } = req.body;
+    
+    const notification = new apn.Notification();
+    notification.alert = { title, body };
+    notification.badge = 1;
+    notification.sound = 'default';
+    notification.topic = 'com.fideleasy.app';
+    
+    const result = await apnProvider.send(notification, device_token);
+    res.json({ message: 'Notification envoyée !', result });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 app.listen(PORT, () => {
   console.log(`FidelEasy API démarrée sur le port ${PORT}`);
