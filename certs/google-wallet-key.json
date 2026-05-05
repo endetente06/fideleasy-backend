@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "fideleasy-495218",
+  "private_key_id": "a545d9154f089dac792727245d3baf604839c261",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCrtV8IIuK9V3qy\naKoUmgwgxAEsjx34j+pffP7+3J3kJZWf/odpdsIJEB1CWVAJb1flXpgB1oH/Vu5I\nsD+im6407y+zXs1bsX6sWCLRoNDKtWmEqRjgx+r6v8hyrZKf2XK+SmXgYQUGN62N\n2Ggpt3GrJBhPIxKyq8JaqFbOoy/Hi54VHbR3V55b63bQ9P+vfHu6Ckog3RuC122N\nCLXHg1HttiVk9kxdkiqnDPPifdR5EoHhjdapQ1P05V+aQEiexCstN/L6tnotEpvs\nf20033G83Ww5HO4O+FgycMfoT7+YgE4AT2ErWX/rD0TsXYYux0nTx3enKgbiT5qB\n7To8GBkBAgMBAAECggEAGDUsTjHY5JfKMQ/ndpsXPaFUhwswTwQ/JzIwow7IZctU\nsmdIgPpgtbVjYqDD02iyrCAvbwbmcfC4DGBowEyRfV4BTBj/+77k3HhahFJXTVTR\nKQZL/xjATJSwNla5NrcJ4cEMZttWwX8lBTvux37Y1Cd1E+cecjkb3/sereg8yrVt\nrpTqO1+8do8ZRa9KfPIJ7Z5ahjwyEihBrcucrBkux9p2R5UWweuKWKlic67+7/XX\n+5zQW7rhZhbW50l9UbzR4NXjqmApOs5vDXHaabqFJPiCrAfE33XpA1btcmcjyIkj\nTa4C35rfeIOn69Js7B7Z1kQ3vMuJc8KJEDyHoE8I6QKBgQDZZsXs76RdaFiZw+NQ\nDDEK5WI/XTH0S0X56cD0oTcFv6s2VHY5ttTsAohHYmkZmT6gPQ1FvZolMdjOe2qf\nAyPM1uO4/JbI9BDNzjS3kP2N7ANTUmzs/K8vPBggzQdPIEChNwA4S2rNEjjMYPMa\n0bb4POPtyPDEgRVulPMpuRowBQKBgQDKMchmcz1IAjOKspb3aBkA4Cy9yp3xOE6j\n+LF8XF9dCeRcoYz9IvEpFLY9HaOVpqj6f0Fvq7hVu5pmXWZ4i9DPqz5y3jlN+gYz\nXRCgH5GgOXvOU4XSoL976RcP4sIN+tk0YFF1N+/xfvdY4D7NNcDs1EW/EL1xciuk\n4zGQ0GMhzQKBgHPC7ueQX5RBaNRP422PYFnt9NfKtzvfDR7bIpzgb10HR5LBfMaU\nnWIioxBnzZEM8bT/bV7SbA8cMNcaDpcnY9vCHTY2gc/1bjE4eQe6E9mLb+XhQREc\nJ+hd9ncY1aiDgwaVM+/F8NPLvSTPBwQj4WrjeXb3hYUNOy1L8QMphlFFAoGAdygL\nb8TuEmeptE03BqqEQa3a8CZeGfAS+DLxddaCJLRVrflOu0dCU/FuzGmRI/pJjwY7\nq/HI+k1K2pSkdNoAvsGuVcd8geWcjdyElbjE+2Wk/pzeOpidAAsHmkcKEW8JXgJ9\nPtUuRGWMowXUPN82yNr4F3doDVk5Ozzg0vTb1ukCgYB+LwMaNcWFKzSqptIoxElo\njJ71cZyIzWQvdrPXZfE7oQ6+iE1UnK4G1dFSzBAoH/9dt6GaFTgMmQaN+/C9dduo\nX7mpL7tXJE4ngW599wD1YwgtkoZYnPMyk0vJl8Weeg84StJKhQshOiAuy7fe6zCl\nIp99w3X4hIoo8QeYya0U+g==\n-----END PRIVATE KEY-----\n",
+  "client_email": "fideleasy-wallet@fideleasy-495218.iam.gserviceaccount.com",
+  "client_id": "102030287790572076373",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/fideleasy-wallet%40fideleasy-495218.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
