@@ -282,6 +282,8 @@ app.get('/pass/google/:card_id', async (req, res) => {
     
     const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
     const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
+    console.log('Customer trouvé:', customer);
+console.log('Card trouvée:', card);
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
 
     const authClient = await getGoogleAuthClient();
