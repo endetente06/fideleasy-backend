@@ -183,7 +183,7 @@ app.get('/pass/apple/:card_id', async (req, res) => {
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
 
     // Créer dossier temporaire
-    const tmpDir = path.join(os.tmpdir(), `pass_${card_id}`);
+    const tmpDir = path.join(os.tmpdir(), `pass_${card_id}.pass`);
     fs.mkdirSync(tmpDir, { recursive: true });
 
     // Copier tous les fichiers du modèle
