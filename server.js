@@ -177,7 +177,10 @@ app.get('/pass/apple/:card_id', async (req, res) => {
     const { card_id } = req.params;
     
     const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
-    const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
+    const { data: customer, error: customerError } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
+console.log('card.customer_id:', card.customer_id);
+console.log('customer:', customer);
+console.log('customerError:', customerError);
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
 
 const pass = await PKPass.from({
