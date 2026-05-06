@@ -180,22 +180,37 @@ app.get('/pass/apple/:card_id', async (req, res) => {
     const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
 
-    const pass = await PKPass.from({
-      model: '/app/passes/FidelEasy.pass',
-      certificates: {
+const pass = await PKPass.from({
+  model: '/app/passes/FidelEasy.pass',
+  certificates: {
     wwdr: fs.readFileSync('/app/certs/wwdr_clean.pem'),
-signerCert: fs.readFileSync('/app/certs/pass_clean.pem'),
-signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
-        signerKeyPassphrase: '123456'
-      }
-    }, {
-      serialNumber: card_id, 
-      'storeCard.primaryFields[0].value': card.points.toString(),
-      'storeCard.secondaryFields[0].value': `${card.stamps}/10`,
-      'storeCard.auxiliaryFields[0].value': customer ? customer.name : 'Client'
-    });
+    signerCert: fs.readFileSync('/app/certs/pass_clean.pem'),
+    signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
+    signerKeyPassphrase: '123456'
+  }
+});
 
-    const buffer = pass.getAsBuffer();
+pass.serialNumber = card_id;
+
+pass.primaryFields.splice(0, 1, {
+  key: 'points',
+  label: 'Points',
+  value: card.points.toString()
+});
+
+pass.secondaryFields.splice(0, 1, {
+  key: 'stamps', 
+  label: 'Tampons',
+  value: `${card.stamps}/10`
+});
+
+pass.auxiliaryFields.splice(0, 1, {
+  key: 'member',
+  label: 'Membre',
+  value: customer ? customer.name : 'Client'
+});
+
+const buffer = pass.getAsBuffer();
     res.set({
       'Content-Type': 'application/vnd.apple.pkpass',
       'Content-Disposition': `attachment; filename="fideLeasy.pkpass"`
