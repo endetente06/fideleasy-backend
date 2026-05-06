@@ -214,7 +214,7 @@ app.get('/pass/apple/:card_id', async (req, res) => {
     const buffer = pass.getAsBuffer();
     
     // Nettoyer
-    fs.rmSync(tmpDir, { recursive: true });
+    try { fs.rmdirSync(tmpDir, { recursive: true }); } catch(e) {}
 
     res.set({
       'Content-Type': 'application/vnd.apple.pkpass',
