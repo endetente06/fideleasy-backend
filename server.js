@@ -174,34 +174,51 @@ app.get('/pass/apple/:card_id', async (req, res) => {
   try {
     const { PKPass } = require('passkit-generator');
     const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
     const { card_id } = req.params;
     
     const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
-    const { data: customer, error: customerError } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
-console.log('card.customer_id:', card.customer_id);
-console.log('customer:', customer);
-console.log('customerError:', customerError);
+    const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
 
-const pass = await PKPass.from({
-  model: '/app/passes/FidelEasy.pass',
-  certificates: {
-    wwdr: fs.readFileSync('/app/certs/wwdr_clean.pem'),
-    signerCert: fs.readFileSync('/app/certs/pass_clean.pem'),
-    signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
-    signerKeyPassphrase: '123456'
-  }
-});
+    // Créer dossier temporaire
+    const tmpDir = path.join(os.tmpdir(), `pass_${card_id}`);
+    fs.mkdirSync(tmpDir, { recursive: true });
 
-pass.serialNumber = card_id;
-pass.props.storeCard.primaryFields[0].value = card.points.toString();
-pass.props.storeCard.secondaryFields[0].value = `${card.stamps}/10`;
-pass.props.storeCard.auxiliaryFields[0].value = customer ? customer.name : 'Client';
+    // Copier tous les fichiers du modèle
+    const modelDir = '/app/passes/FidelEasy.pass';
+    fs.readdirSync(modelDir).forEach(file => {
+      fs.copyFileSync(path.join(modelDir, file), path.join(tmpDir, file));
+    });
 
-const buffer = pass.getAsBuffer();
+    // Modifier le pass.json avec les vraies données
+    const passJson = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pass.json'), 'utf8'));
+    passJson.serialNumber = card_id;
+    passJson.storeCard.primaryFields[0].value = card.points.toString();
+    passJson.storeCard.secondaryFields[0].value = `${card.stamps}/10`;
+    passJson.storeCard.auxiliaryFields[0].value = customer ? customer.name : 'Client';
+    if (shop) passJson.logoText = shop.name;
+    fs.writeFileSync(path.join(tmpDir, 'pass.json'), JSON.stringify(passJson));
+
+    const pass = await PKPass.from({
+      model: tmpDir,
+      certificates: {
+        wwdr: fs.readFileSync('/app/certs/wwdr_clean.pem'),
+        signerCert: fs.readFileSync('/app/certs/pass_clean.pem'),
+        signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
+        signerKeyPassphrase: '123456'
+      }
+    });
+
+    const buffer = pass.getAsBuffer();
+    
+    // Nettoyer
+    fs.rmSync(tmpDir, { recursive: true });
+
     res.set({
       'Content-Type': 'application/vnd.apple.pkpass',
-      'Content-Disposition': `attachment; filename="fideLeasy.pkpass"`
+      'Content-Disposition': `attachment; filename="fideleasy.pkpass"`
     });
     res.send(buffer);
   } catch (err) {
