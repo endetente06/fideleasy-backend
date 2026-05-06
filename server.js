@@ -191,24 +191,9 @@ const pass = await PKPass.from({
 });
 
 pass.serialNumber = card_id;
-
-pass.primaryFields.splice(0, 1, {
-  key: 'points',
-  label: 'Points',
-  value: card.points.toString()
-});
-
-pass.secondaryFields.splice(0, 1, {
-  key: 'stamps', 
-  label: 'Tampons',
-  value: `${card.stamps}/10`
-});
-
-pass.auxiliaryFields.splice(0, 1, {
-  key: 'member',
-  label: 'Membre',
-  value: customer ? customer.name : 'Client'
-});
+pass.props.storeCard.primaryFields[0].value = card.points.toString();
+pass.props.storeCard.secondaryFields[0].value = `${card.stamps}/10`;
+pass.props.storeCard.auxiliaryFields[0].value = customer ? customer.name : 'Client';
 
 const buffer = pass.getAsBuffer();
     res.set({
