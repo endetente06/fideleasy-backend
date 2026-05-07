@@ -213,11 +213,15 @@ console.log('card.shop_id:', card.shop_id);
     // Modifier le pass.json avec les vraies données
     const passJson = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pass.json'), 'utf8'));
     passJson.serialNumber = `${card_id}_${Date.now()}`;
-    passJson.storeCard.primaryFields[0].value = card.points.toString();
-    passJson.storeCard.secondaryFields[0].value = `${card.stamps}/10`;
-    passJson.storeCard.auxiliaryFields[0].value = customer ? customer.name : 'Client';
-    passJson.logoText = (shop.card_logo_text || shop.name || 'FidelEasy').substring(0, 20);
-    fs.writeFileSync(path.join(tmpDir, 'pass.json'), JSON.stringify(passJson));
+passJson.storeCard.primaryFields[0].value = card.points.toString();
+passJson.storeCard.secondaryFields[0].value = `${card.stamps}/${shop?.card_stamps_required || 10}`;
+passJson.storeCard.auxiliaryFields[0].value = customer ? customer.name : 'Client';
+passJson.logoText = (shop?.card_logo_text || shop?.name || 'FidelEasy').substring(0, 20);
+passJson.backgroundColor = shop?.card_color || 'rgb(10, 10, 24)';
+passJson.foregroundColor = 'rgb(255, 255, 255)';
+passJson.labelColor = 'rgb(212, 175, 55)';
+console.log('backgroundColor appliqué:', passJson.backgroundColor);
+fs.writeFileSync(path.join(tmpDir, 'pass.json'), JSON.stringify(passJson));
 
     const pass = await PKPass.from({
       model: tmpDir,
