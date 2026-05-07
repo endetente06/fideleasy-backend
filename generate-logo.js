@@ -9,32 +9,30 @@ function drawLogo(canvas) {
 
   ctx.clearRect(0, 0, w, h);
 
-  // Carte contour
+  // Carte contour (plus petite)
   ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 1.5 * s;
+  ctx.lineWidth = 1.2 * s;
   ctx.beginPath();
-  ctx.roundRect(0, 7 * s, 52 * s, 36 * s, 6 * s);
+  ctx.roundRect(0, 8 * s, 38 * s, 26 * s, 4 * s);
   ctx.stroke();
 
   // Bande dorée
   ctx.fillStyle = '#d4af37';
   ctx.beginPath();
-  ctx.roundRect(0, 7 * s, 52 * s, 14 * s, [6 * s, 6 * s, 0, 0]);
+  ctx.roundRect(0, 8 * s, 38 * s, 10 * s, [4 * s, 4 * s, 0, 0]);
   ctx.fill();
 
   // Puce
   ctx.beginPath();
-  ctx.arc(38 * s, 33 * s, 5 * s, 0, Math.PI * 2);
+  ctx.arc(28 * s, 24 * s, 3.5 * s, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Texte Fidel
+  // Texte FidelEasy sur une ligne
   ctx.fillStyle = 'white';
-  ctx.font = `bold ${22 * s}px Arial`;
-  ctx.fillText('Fidel', 62 * s, 28 * s);
-
-  // Texte Easy
+  ctx.font = `bold ${16 * s}px Arial`;
+  ctx.fillText('Fidel', 44 * s, 20 * s);
   ctx.fillStyle = '#d4af37';
-  ctx.fillText('Easy', 62 * s, 50 * s);
+  ctx.fillText('Easy', 44 * s, 38 * s);
 }
 
 const canvas1 = createCanvas(160, 50);
