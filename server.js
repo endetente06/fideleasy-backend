@@ -110,8 +110,25 @@ app.post('/cards/:id/stamp', async (req, res) => {
     const { id } = req.params;
     const { data: card, error: fetchError } = await supabase.from('loyalty_cards').select('*').eq('id', id).single();
     if (fetchError) throw fetchError;
+
+    // Anti-fraude : vérifier le délai depuis le dernier tampon
+    if (card.last_stamp_at) {
+      const lastStamp = new Date(card.last_stamp_at);
+      const now = new Date();
+      const diffMinutes = (now - lastStamp) / 1000 / 60;
+      if (diffMinutes < 60) {
+        return res.status(429).json({ 
+          error: `Tampon refusé ! Dernier tampon il y a ${Math.floor(diffMinutes)} minutes. Attendez ${Math.floor(60 - diffMinutes)} minutes.` 
+        });
+      }
+    }
+
     const newStamps = card.stamps + 1;
-    const { data, error } = await supabase.from('loyalty_cards').update({ stamps: newStamps }).eq('id', id).select();
+    const { data, error } = await supabase
+      .from('loyalty_cards')
+      .update({ stamps: newStamps, last_stamp_at: new Date().toISOString() })
+      .eq('id', id)
+      .select();
     if (error) throw error;
     res.json({ message: `Tampon ajouté ! Total: ${newStamps}`, data });
   } catch (err) {
