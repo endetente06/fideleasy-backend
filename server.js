@@ -17,48 +17,56 @@ app.use(express.json());
 const { createCanvas, loadImage } = require('canvas');
 
 async function generateStripImage(shop) {
-  const width = 750;
-  const height = 288;
+  const { createCanvas, loadImage } = require('canvas');
+  const width = 1125;
+  const height = 432;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Fond avec couleur du commerce
-  const bgColor = shop?.card_color || 'rgb(10, 10, 24)';
-  ctx.fillStyle = bgColor;
+  // Fond noir par défaut
+  ctx.fillStyle = '#0a0a18';
   ctx.fillRect(0, 0, width, height);
 
-  // Si photo du commerce disponible
+  // Photo du commerce en fond
   if (shop?.card_image_url) {
     try {
       const img = await loadImage(shop.card_image_url);
       ctx.drawImage(img, 0, 0, width, height);
-      // Overlay sombre pour lisibilité
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(0, 0, width, height);
-    } catch(e) {}
+    } catch(e) {
+      console.log('Erreur chargement image:', e.message);
+    }
   }
 
-  // Dégradé en bas pour lisibilité
-  const gradient = ctx.createLinearGradient(0, height/2, 0, height);
-  gradient.addColorStop(0, 'rgba(0,0,0,0)');
-  gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
-  ctx.fillStyle = gradient;
+  // Overlay dégradé sombre pour lisibilité
+  const grad1 = ctx.createLinearGradient(0, 0, 0, height);
+  grad1.addColorStop(0, 'rgba(0,0,0,0.3)');
+  grad1.addColorStop(0.5, 'rgba(0,0,0,0.1)');
+  grad1.addColorStop(1, 'rgba(0,0,0,0.75)');
+  ctx.fillStyle = grad1;
   ctx.fillRect(0, 0, width, height);
 
-  // Nom du commerce
-  ctx.fillStyle = 'white';
-  ctx.font = 'bold 64px Arial';
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 10;
-  ctx.fillText(shop?.card_logo_text || shop?.name || 'FidelEasy', 48, height - 60);
+  // Texte principal en bas à gauche
+  const shopName = shop?.card_logo_text || shop?.name || 'FidelEasy';
+  const stamps = 0;
+  const stampsRequired = shop?.card_stamps_required || 10;
+  const remaining = stampsRequired - stamps;
+  const message = remaining > 0 
+    ? `Encore ${remaining} visite${remaining > 1 ? 's' : ''} !` 
+    : '🎉 Récompense disponible !';
 
-  // Ligne décorative dorée
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#d4af37';
-  ctx.fillRect(48, height - 36, 80, 4);
+  // Label petit
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = 'bold 28px Arial';
+  ctx.fillText('CARTE DE FIDÉLITÉ', 60, height - 110);
+
+  // Message principal
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 72px Arial';
+  ctx.fillText(message, 60, height - 40);
 
   return canvas.toBuffer('image/png');
 }
+
 app.get('/', (req, res) => {
   res.json({ message: 'Bienvenue sur FidelEasy API !', status: 'online' });
 });
