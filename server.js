@@ -3,7 +3,9 @@ const cors = require('cors');
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const QRCode = require('qrcode');
-
+const { PKPass } = require('passkit-generator');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
