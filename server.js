@@ -22,7 +22,9 @@ async function generateStripImage(shop) {
   const height = 432;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
-
+const { PKPass } = require('passkit-generator');
+const fs = require('fs');
+const path = require('path');
   // Fond noir par défaut
   ctx.fillStyle = '#0a0a18';
   ctx.fillRect(0, 0, width, height);
@@ -241,68 +243,55 @@ app.get('/qrcode/:shop_id', async (req, res) => {
 // Générer une vraie carte Apple Wallet
 app.get('/pass/apple/:card_id', async (req, res) => {
   try {
-    const { PKPass } = require('passkit-generator');
-    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
+   
     const { card_id } = req.params;
     
     const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
     const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
-console.log('Shop card_color:', shop?.card_color);
-console.log('card.shop_id:', card.shop_id);
-    // Créer dossier temporaire
-    const { PKPass } = require('passkit-generator');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
 
-// Générer strip
-const stripImageBuffer = await generateStripImage(shop);
+    // Générer strip
+    const stripImageBuffer = await generateStripImage(shop);
 
-// Créer le pass directement
-const pass = new PKPass({
-  'pass.json': Buffer.from(JSON.stringify({
-    formatVersion: 1,
-    passTypeIdentifier: 'pass.com.fideleasy',
-    serialNumber: `${card_id}_${Date.now()}`,
-    teamIdentifier: 'Q7XBK68TWG',
-    backgroundColor: shop?.card_color || 'rgb(10, 10, 24)',
-    foregroundColor: 'rgb(255, 255, 255)',
-    labelColor: 'rgb(212, 175, 55)',
-    logoText: shop?.card_logo_text || shop?.name || 'FidelEasy',
-    organizationName: 'FidelEasy',
-    description: 'Carte de fidelite FidelEasy',
-    barcodes: [{
-      message: card_id,
-      format: 'PKBarcodeFormatQR',
-      messageEncoding: 'iso-8859-1'
-    }],
-    eventTicket: {
-      primaryFields: [{ key: 'title', label: 'CARTE DE FIDÉLITÉ', value: shop?.card_logo_text || shop?.name || 'FidelEasy' }],
-      secondaryFields: [{ key: 'stamps', label: 'VOTRE SOLDE', value: `${card.stamps}/${shop?.card_stamps_required || 10}` }],
-      auxiliaryFields: [{ key: 'member', label: 'MEMBRE', value: customer ? customer.name : 'Client' }]
-    }
-  })),
-  'logo.png': fs.readFileSync('/app/passes/FidelEasy.pass/logo.png'),
-  'logo@2x.png': fs.readFileSync('/app/passes/FidelEasy.pass/logo@2x.png'),
-  'icon.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon.png'),
-  'icon@2x.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon@2x.png'),
-  'strip.png': stripImageBuffer,
-  'strip@2x.png': stripImageBuffer,
-}, {
-  wwdr: fs.readFileSync('/app/certs/wwdr_clean.pem'),
-  signerCert: fs.readFileSync('/app/certs/pass_clean.pem'),
-  signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
-  signerKeyPassphrase: '123456'
-});
+    // Créer le pass directement
+    const pass = new PKPass({
+      'pass.json': Buffer.from(JSON.stringify({
+        formatVersion: 1,
+        passTypeIdentifier: 'pass.com.fideleasy',
+        serialNumber: `${card_id}_${Date.now()}`,
+        teamIdentifier: 'Q7XBK68TWG',
+        backgroundColor: shop?.card_color || 'rgb(10, 10, 24)',
+        foregroundColor: 'rgb(255, 255, 255)',
+        labelColor: 'rgb(212, 175, 55)',
+        logoText: shop?.card_logo_text || shop?.name || 'FidelEasy',
+        organizationName: 'FidelEasy',
+        description: 'Carte de fidelite FidelEasy',
+        barcodes: [{
+          message: card_id,
+          format: 'PKBarcodeFormatQR',
+          messageEncoding: 'iso-8859-1'
+        }],
+        eventTicket: {
+          primaryFields: [{ key: 'title', label: 'CARTE DE FIDÉLITÉ', value: shop?.card_logo_text || shop?.name || 'FidelEasy' }],
+          secondaryFields: [{ key: 'stamps', label: 'VOTRE SOLDE', value: `${card.stamps}/${shop?.card_stamps_required || 10}` }],
+          auxiliaryFields: [{ key: 'member', label: 'MEMBRE', value: customer ? customer.name : 'Client' }]
+        }
+      })),
+      'logo.png': fs.readFileSync('/app/passes/FidelEasy.pass/logo.png'),
+      'logo@2x.png': fs.readFileSync('/app/passes/FidelEasy.pass/logo@2x.png'),
+      'icon.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon.png'),
+      'icon@2x.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon@2x.png'),
+      'strip.png': stripImageBuffer,
+      'strip@2x.png': stripImageBuffer,
+    }, {
+      wwdr: fs.readFileSync('/app/certs/wwdr_clean.pem'),
+      signerCert: fs.readFileSync('/app/certs/pass_clean.pem'),
+      signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
+      signerKeyPassphrase: '123456'
+    });
 
-const buffer = pass.getAsBuffer();
+    const buffer = pass.getAsBuffer();
     
-    // Nettoyer
-    try { fs.rmdirSync(tmpDir, { recursive: true }); } catch(e) {}
-
     res.set({
       'Content-Type': 'application/vnd.apple.pkpass',
       'Content-Disposition': `attachment; filename="fideleasy.pkpass"`
@@ -312,6 +301,8 @@ const buffer = pass.getAsBuffer();
     res.status(400).json({ error: err.message, stack: err.stack });
   }
 });
+    
+    
 // Inscription commerçant
 app.post('/auth/register', async (req, res) => {
   try {
