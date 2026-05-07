@@ -255,7 +255,24 @@ console.log('card.shop_id:', card.shop_id);
     });
 
     // Modifier le pass.json avec les vraies données
-    passJson.serialNumber = `${card_id}_${Date.now()}`;
+    // Modifier le pass.json avec les vraies données
+const passJson = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pass.json'), 'utf8'));
+passJson.serialNumber = `${card_id}_${Date.now()}`;
+passJson.eventTicket.primaryFields[0].value = shop?.card_logo_text || shop?.name || 'FidelEasy';
+passJson.eventTicket.secondaryFields[0].value = `${card.stamps}/${shop?.card_stamps_required || 10}`;
+passJson.eventTicket.auxiliaryFields[0].value = customer ? customer.name : 'Client';
+passJson.logoText = '';
+passJson.backgroundColor = 'rgb(0,0,0)';
+passJson.foregroundColor = 'rgb(255,255,255)';
+passJson.labelColor = 'rgb(255,255,255)';
+
+// Strip plein format
+const stripBuffer = await generateStripImage(shop);
+fs.writeFileSync(path.join(tmpDir, 'strip.png'), stripBuffer);
+fs.writeFileSync(path.join(tmpDir, 'strip@2x.png'), stripBuffer);
+
+fs.writeFileSync(path.join(tmpDir, 'pass.json'), JSON.stringify(passJson));
+   passJson.serialNumber = `${card_id}_${Date.now()}`;
 passJson.eventTicket.primaryFields[0].value = shop?.card_logo_text || shop?.name || 'FidelEasy';
 passJson.eventTicket.secondaryFields[0].value = `${card.stamps}/${shop?.card_stamps_required || 10}`;
 passJson.eventTicket.auxiliaryFields[0].value = customer ? customer.name : 'Client';
