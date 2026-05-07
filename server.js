@@ -426,6 +426,21 @@ app.post('/push/send', async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});// Mettre à jour un commerce
+app.patch('/shops/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const { data, error } = await supabase
+      .from('shops')
+      .update(updates)
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    res.json({ message: 'Commerce mis à jour !', data });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 app.listen(PORT, () => {
   console.log(`FidelEasy API démarrée sur le port ${PORT}`);
