@@ -272,7 +272,8 @@ fs.writeFileSync(path.join(tmpDir, 'strip.png'), stripImageBuffer);
 fs.writeFileSync(path.join(tmpDir, 'strip@2x.png'), stripImageBuffer);
 
 fs.writeFileSync(path.join(tmpDir, 'pass.json'), JSON.stringify(passJson));
-
+const checkJson = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pass.json'), 'utf8'));
+console.log('Pass type:', Object.keys(checkJson).filter(k => ['eventTicket','storeCard','generic','coupon','boardingPass'].includes(k)));
     const pass = await PKPass.from({
       model: tmpDir,
       certificates: {
