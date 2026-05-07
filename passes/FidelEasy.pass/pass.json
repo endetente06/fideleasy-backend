@@ -3,31 +3,38 @@
   "passTypeIdentifier": "pass.com.fideleasy",
   "serialNumber": "001",
   "teamIdentifier": "Q7XBK68TWG",
-  "backgroundColor": "rgb(10, 10, 24)",
+  "backgroundColor": "rgb(0, 0, 0)",
   "foregroundColor": "rgb(255, 255, 255)",
-  "labelColor": "rgb(212, 175, 55)",
-  "logoText": "FidelEasy",
+  "labelColor": "rgb(255, 255, 255)",
+  "logoText": "",
   "organizationName": "FidelEasy",
   "description": "Carte de fidelite FidelEasy",
-  "storeCard": {
+  "barcodes": [
+    {
+      "message": "fideleasy",
+      "format": "PKBarcodeFormatQR",
+      "messageEncoding": "iso-8859-1"
+    }
+  ],
+  "eventTicket": {
     "primaryFields": [
       {
-        "key": "points",
-        "label": "Points",
-        "value": "0"
+        "key": "title",
+        "label": "CARTE DE FIDÉLITÉ",
+        "value": "Bienvenue !"
       }
     ],
     "secondaryFields": [
       {
         "key": "stamps",
-        "label": "Tampons",
+        "label": "VOTRE SOLDE",
         "value": "0/10"
       }
     ],
     "auxiliaryFields": [
       {
         "key": "member",
-        "label": "Membre",
+        "label": "MEMBRE",
         "value": "Client"
       }
     ]
