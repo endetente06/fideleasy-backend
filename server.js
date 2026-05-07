@@ -14,7 +14,51 @@ const supabase = createClient(
 
 app.use(cors());
 app.use(express.json());
+const { createCanvas, loadImage } = require('canvas');
 
+async function generateStripImage(shop) {
+  const width = 750;
+  const height = 288;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  // Fond avec couleur du commerce
+  const bgColor = shop?.card_color || 'rgb(10, 10, 24)';
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  // Si photo du commerce disponible
+  if (shop?.card_image_url) {
+    try {
+      const img = await loadImage(shop.card_image_url);
+      ctx.drawImage(img, 0, 0, width, height);
+      // Overlay sombre pour lisibilité
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(0, 0, width, height);
+    } catch(e) {}
+  }
+
+  // Dégradé en bas pour lisibilité
+  const gradient = ctx.createLinearGradient(0, height/2, 0, height);
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  // Nom du commerce
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 64px Arial';
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 10;
+  ctx.fillText(shop?.card_logo_text || shop?.name || 'FidelEasy', 48, height - 60);
+
+  // Ligne décorative dorée
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#d4af37';
+  ctx.fillRect(48, height - 36, 80, 4);
+
+  return canvas.toBuffer('image/png');
+}
 app.get('/', (req, res) => {
   res.json({ message: 'Bienvenue sur FidelEasy API !', status: 'online' });
 });
@@ -221,6 +265,10 @@ passJson.backgroundColor = shop?.card_color || 'rgb(10, 10, 24)';
 passJson.foregroundColor = 'rgb(255, 255, 255)';
 passJson.labelColor = 'rgb(212, 175, 55)';
 console.log('backgroundColor appliqué:', passJson.backgroundColor);
+// Générer strip.png dynamique
+const stripBuffer = await generateStripImage(shop);
+fs.writeFileSync(path.join(tmpDir, 'strip.png'), stripBuffer);
+fs.writeFileSync(path.join(tmpDir, 'strip@2x.png'), stripBuffer);
 fs.writeFileSync(path.join(tmpDir, 'pass.json'), JSON.stringify(passJson));
 
     const pass = await PKPass.from({
