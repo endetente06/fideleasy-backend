@@ -198,7 +198,8 @@ app.get('/pass/apple/:card_id', async (req, res) => {
     const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
     const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
-
+console.log('Shop card_color:', shop?.card_color);
+console.log('card.shop_id:', card.shop_id);
     // Créer dossier temporaire
     const tmpDir = path.join(os.tmpdir(), `pass_${card_id}.pass`);
     fs.mkdirSync(tmpDir, { recursive: true });
@@ -215,7 +216,7 @@ app.get('/pass/apple/:card_id', async (req, res) => {
     passJson.storeCard.primaryFields[0].value = card.points.toString();
     passJson.storeCard.secondaryFields[0].value = `${card.stamps}/10`;
     passJson.storeCard.auxiliaryFields[0].value = customer ? customer.name : 'Client';
-    if (shop) passJson.logoText = shop.name;
+    passJson.logoText = (shop.card_logo_text || shop.name || 'FidelEasy').substring(0, 20);
     fs.writeFileSync(path.join(tmpDir, 'pass.json'), JSON.stringify(passJson));
 
     const pass = await PKPass.from({
