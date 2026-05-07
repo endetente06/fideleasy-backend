@@ -212,7 +212,7 @@ console.log('card.shop_id:', card.shop_id);
 
     // Modifier le pass.json avec les vraies données
     const passJson = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pass.json'), 'utf8'));
-    passJson.serialNumber = card_id;
+    passJson.serialNumber = `${card_id}_${Date.now()}`;
     passJson.storeCard.primaryFields[0].value = card.points.toString();
     passJson.storeCard.secondaryFields[0].value = `${card.stamps}/10`;
     passJson.storeCard.auxiliaryFields[0].value = customer ? customer.name : 'Client';
