@@ -257,18 +257,20 @@ app.get('/pass/apple/:card_id', async (req, res) => {
 
     // Créer le pass directement
 // Générer logo dynamique pour ce commerce
-const { createCanvas } = require('canvas');
-const logoCanvas = createCanvas(320, 160);
+const logoCanvas = createCanvas(160, 160);
 const lCtx = logoCanvas.getContext('2d');
-lCtx.fillStyle = shop?.card_color || 'rgb(10,10,24)';
-lCtx.fillRect(0, 0, 320, 160);
+lCtx.clearRect(0, 0, 160, 160);
 lCtx.fillStyle = '#d4af37';
-lCtx.font = 'bold 36px Arial';
+lCtx.beginPath();
+lCtx.arc(80, 80, 76, 0, Math.PI * 2);
+lCtx.fill();
+const shopInitial = (shop?.card_logo_text || shop?.name || 'F')[0].toUpperCase();
+lCtx.fillStyle = '#0a0a18';
+lCtx.font = 'bold 80px Arial';
 lCtx.textAlign = 'center';
 lCtx.textBaseline = 'middle';
-lCtx.fillText(shop?.card_logo_text || shop?.name || 'FidelEasy', 160, 80);
+lCtx.fillText(shopInitial, 80, 80);
 const logoBuffer = logoCanvas.toBuffer('image/png');
-
 // Adapter affichage selon loyalty_type
 const isPoints = shop?.loyalty_type === 'points';
 const primaryValue = isPoints ? card.points.toString() : `${card.stamps}/${shop?.card_stamps_required || 10}`;
