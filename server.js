@@ -301,10 +301,13 @@ const pass = new PKPass({
   signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
   signerKeyPassphrase: '123456'
 });
+
+    const buffer = pass.getAsBuffer();
     
     res.set({
       'Content-Type': 'application/vnd.apple.pkpass',
-      'Content-Disposition': `attachment; filename="fideleasy.pkpass"`
+      'Content-Disposition': `attachment; filename="fideleasy.pkpass"`,
+      'Content-Transfer-Encoding': 'binary'
     });
     res.send(buffer);
   } catch (err) {
