@@ -186,6 +186,12 @@ app.post('/cards/:id/stamp', async (req, res) => {
       .eq('id', id)
       .select();
     if (error) throw error;
+    // Enregistrer l'événement tampon
+await supabase.from('stamp_events').insert([{
+  shop_id: card.shop_id,
+  customer_id: card.customer_id,
+  card_id: id
+}]);
     res.json({ message: `Tampon ajouté ! Total: ${newStamps}`, data });
   } catch (err) {
     res.status(400).json({ error: err.message });
