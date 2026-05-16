@@ -252,24 +252,54 @@ app.get('/qrcode/:shop_id', async (req, res) => {
 app.get('/stats/:shop_id', async (req, res) => {
   try {
     const { shop_id } = req.params;
+    
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const lastWeekStart = new Date();
+    lastWeekStart.setDate(lastWeekStart.getDate() - 14);
+    const lastWeekEnd = new Date();
+    lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
+
     const { data: events } = await supabase.from('stamp_events').select('*').eq('shop_id', shop_id).gte('created_at', sevenDaysAgo.toISOString());
+    const { data: lastWeekEvents } = await supabase.from('stamp_events').select('*').eq('shop_id', shop_id).gte('created_at', lastWeekStart.toISOString()).lte('created_at', lastWeekEnd.toISOString());
+    const { data: monthEvents } = await supabase.from('stamp_events').select('*').eq('shop_id', shop_id).gte('created_at', thirtyDaysAgo.toISOString());
     const { data: allEvents } = await supabase.from('stamp_events').select('*').eq('shop_id', shop_id);
     const { data: cards } = await supabase.from('loyalty_cards').select('*').eq('shop_id', shop_id);
-    const topClients = cards?.sort((a, b) => (b.stamps || 0) - (a.stamps || 0)).slice(0, 5);
+    const { data: shop } = await supabase.from('shops').select('*').eq('id', shop_id).single();
+
+    const topClients = [...(cards || [])].sort((a, b) => (b.stamps || 0) - (a.stamps || 0)).slice(0, 5);
+
     const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
     const stampsByDay = [0, 0, 0, 0, 0, 0, 0];
     events?.forEach(e => { const day = new Date(e.created_at).getDay(); stampsByDay[day]++; });
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const inactiveClients = cards?.filter(c => { if (!c.last_stamp_at) return true; return new Date(c.last_stamp_at) < thirtyDaysAgo; });
+
+    const inactiveClients = (cards || []).filter(c => { if (!c.last_stamp_at) return true; return new Date(c.last_stamp_at) < thirtyDaysAgo; });
+    const activeClients = (cards || []).filter(c => c.last_stamp_at && new Date(c.last_stamp_at) >= thirtyDaysAgo);
+    const retentionRate = cards?.length > 0 ? Math.round((activeClients.length / cards.length) * 100) : 0;
+
+    const completedCards = (cards || []).filter(c => c.stamps >= (shop?.card_stamps_required || 10));
+    const pointsPerEuro = shop?.points_per_euro || 1;
+    const avgTicket = 15;
+    const estimatedRevenue = Math.round(allEvents?.length * avgTicket);
+
+    const weekGrowth = lastWeekEvents?.length > 0 
+      ? Math.round(((events?.length - lastWeekEvents?.length) / lastWeekEvents?.length) * 100)
+      : events?.length > 0 ? 100 : 0;
+
     res.json({
       stampsByDay: days.map((d, i) => ({ day: d, count: stampsByDay[i] })),
-      topClients: topClients || [],
+      topClients,
       totalStamps: allEvents?.length || 0,
       inactiveCount: inactiveClients?.length || 0,
       weekStamps: events?.length || 0,
+      monthStamps: monthEvents?.length || 0,
+      retentionRate,
+      completedCards: completedCards?.length || 0,
+      estimatedRevenue,
+      weekGrowth,
+      activeClients: activeClients?.length || 0,
     });
   } catch (err) {
     res.status(400).json({ error: err.message });
