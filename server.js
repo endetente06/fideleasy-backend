@@ -172,7 +172,7 @@ app.post('/cards/:id/stamp', async (req, res) => {
       const lastStamp = new Date(card.last_stamp_at);
       const now = new Date();
       const diffMinutes = (now - lastStamp) / 1000 / 60;
-      if (diffMinutes < 1) {
+      if (diffMinutes < 60) {
         return res.status(429).json({ 
           error: `Tampon refusé ! Dernier tampon il y a ${Math.floor(diffMinutes)} minutes. Attendez ${Math.floor(60 - diffMinutes)} minutes.` 
         });
