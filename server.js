@@ -351,12 +351,14 @@ const pass = new PKPass({
     labelColor: 'rgb(212, 175, 55)',
     logoText: shop?.card_logo_text || shop?.name || 'FidelEasy',
     organizationName: shop?.name || 'FidelEasy',
-    description: 'Carte de fidelite FidelEasy',
+    description: `Carte de fidélité ${shop?.name || 'FidelEasy'}`,
     storeCard: {
       primaryFields: [{ key: 'balance', label: primaryLabel, value: primaryValue }],
       secondaryFields: [{ key: 'member', label: 'Membre', value: customer ? customer.name : 'Client' }],
     }
   })),
+  'strip.png': stripImageBuffer,
+  'strip@2x.png': stripImageBuffer,
   'logo.png': logoBuffer,
   'logo@2x.png': logoBuffer,
   'icon.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon.png'),
