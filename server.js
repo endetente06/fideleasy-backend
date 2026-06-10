@@ -24,14 +24,11 @@ async function generateStripImage(shop) {
   const height = 432;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
-const { PKPass } = require('passkit-generator');
-const fs = require('fs');
-const path = require('path');
-  // Fond noir par défaut
+  const { PKPass } = require('passkit-generator');
+  const fs = require('fs');
+  const path = require('path');
   ctx.fillStyle = '#0a0a18';
   ctx.fillRect(0, 0, width, height);
-
-  // Photo du commerce en fond
   if (shop?.card_image_url) {
     try {
       const img = await loadImage(shop.card_image_url);
@@ -40,34 +37,22 @@ const path = require('path');
       console.log('Erreur chargement image:', e.message);
     }
   }
-
-  // Overlay dégradé sombre pour lisibilité
   const grad1 = ctx.createLinearGradient(0, 0, 0, height);
   grad1.addColorStop(0, 'rgba(0,0,0,0.3)');
   grad1.addColorStop(0.5, 'rgba(0,0,0,0.1)');
   grad1.addColorStop(1, 'rgba(0,0,0,0.75)');
   ctx.fillStyle = grad1;
   ctx.fillRect(0, 0, width, height);
-
-  // Texte principal en bas à gauche
   const shopName = shop?.card_logo_text || shop?.name || 'FidelEasy';
-  const stamps = 0;
   const stampsRequired = shop?.card_stamps_required || 10;
-  const remaining = stampsRequired - stamps;
-  const message = remaining > 0 
-    ? `Encore ${remaining} visite${remaining > 1 ? 's' : ''} !` 
-    : '🎉 Récompense disponible !';
-
-  // Label petit
+  const remaining = stampsRequired;
+  const message = remaining > 0 ? `Encore ${remaining} visite${remaining > 1 ? 's' : ''} !` : '🎉 Récompense disponible !';
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.font = 'bold 28px Arial';
   ctx.fillText('CARTE DE FIDÉLITÉ', 60, height - 110);
-
-  // Message principal
   ctx.fillStyle = 'white';
   ctx.font = 'bold 72px Arial';
   ctx.fillText(message, 60, height - 40);
-
   return canvas.toBuffer('image/png');
 }
 
@@ -167,7 +152,6 @@ app.post('/cards/:id/stamp', async (req, res) => {
     const { data: card, error: fetchError } = await supabase.from('loyalty_cards').select('*').eq('id', id).single();
     if (fetchError) throw fetchError;
 
-    // Anti-fraude : vérifier le délai depuis le dernier tampon
     if (card.last_stamp_at) {
       const lastStamp = new Date(card.last_stamp_at);
       const now = new Date();
@@ -186,12 +170,25 @@ app.post('/cards/:id/stamp', async (req, res) => {
       .eq('id', id)
       .select();
     if (error) throw error;
-    // Enregistrer l'événement tampon
-await supabase.from('stamp_events').insert([{
-  shop_id: card.shop_id,
-  customer_id: card.customer_id,
-  card_id: id
-}]);
+
+    await supabase.from('stamp_events').insert([{
+      shop_id: card.shop_id,
+      customer_id: card.customer_id,
+      card_id: id
+    }]);
+
+    // Push update Apple Wallet
+    if (card.push_token) {
+      try {
+        const notification = new apn.Notification();
+        notification.topic = 'pass.com.fideleasy';
+        notification.payload = {};
+        await apnProvider.send(notification, card.push_token);
+      } catch(e) {
+        console.log('Erreur push Apple Wallet:', e.message);
+      }
+    }
+
     res.json({ message: `Tampon ajouté ! Total: ${newStamps}`, data });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -201,12 +198,8 @@ await supabase.from('stamp_events').insert([{
 app.post('/notifications', async (req, res) => {
   try {
     const { shop_id, title, message, target } = req.body;
-    
-    // Sauvegarder en base
     const { data, error } = await supabase.from('notifications').insert([{ shop_id, title, message, target, sent_count: 0 }]).select();
     if (error) throw error;
-
-    // Envoyer via OneSignal
     await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
       headers: {
@@ -220,13 +213,12 @@ app.post('/notifications', async (req, res) => {
         contents: { en: message }
       })
     });
-
     res.json({ message: 'Notification envoyée !', data });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
-  
+
 app.get('/notifications/:shop_id', async (req, res) => {
   try {
     const { shop_id } = req.params;
@@ -241,7 +233,7 @@ app.get('/notifications/:shop_id', async (req, res) => {
 app.get('/qrcode/:shop_id', async (req, res) => {
   try {
     const { shop_id } = req.params;
-    const url = `https://fideleasy-dashboard.vercel.app/join/${shop_id}`;
+    const url = `https://fideleasy.app/join/${shop_id}`;
     const qrCode = await QRCode.toDataURL(url);
     res.json({ qrCode, url });
   } catch (err) {
@@ -252,7 +244,6 @@ app.get('/qrcode/:shop_id', async (req, res) => {
 app.get('/stats/:shop_id', async (req, res) => {
   try {
     const { shop_id } = req.params;
-    
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const thirtyDaysAgo = new Date();
@@ -261,33 +252,25 @@ app.get('/stats/:shop_id', async (req, res) => {
     lastWeekStart.setDate(lastWeekStart.getDate() - 14);
     const lastWeekEnd = new Date();
     lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
-
     const { data: events } = await supabase.from('stamp_events').select('*').eq('shop_id', shop_id).gte('created_at', sevenDaysAgo.toISOString());
     const { data: lastWeekEvents } = await supabase.from('stamp_events').select('*').eq('shop_id', shop_id).gte('created_at', lastWeekStart.toISOString()).lte('created_at', lastWeekEnd.toISOString());
     const { data: monthEvents } = await supabase.from('stamp_events').select('*').eq('shop_id', shop_id).gte('created_at', thirtyDaysAgo.toISOString());
     const { data: allEvents } = await supabase.from('stamp_events').select('*').eq('shop_id', shop_id);
     const { data: cards } = await supabase.from('loyalty_cards').select('*').eq('shop_id', shop_id);
     const { data: shop } = await supabase.from('shops').select('*').eq('id', shop_id).single();
-
     const topClients = [...(cards || [])].sort((a, b) => (b.stamps || 0) - (a.stamps || 0)).slice(0, 5);
-
     const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
     const stampsByDay = [0, 0, 0, 0, 0, 0, 0];
     events?.forEach(e => { const day = new Date(e.created_at).getDay(); stampsByDay[day]++; });
-
     const inactiveClients = (cards || []).filter(c => { if (!c.last_stamp_at) return true; return new Date(c.last_stamp_at) < thirtyDaysAgo; });
     const activeClients = (cards || []).filter(c => c.last_stamp_at && new Date(c.last_stamp_at) >= thirtyDaysAgo);
     const retentionRate = cards?.length > 0 ? Math.round((activeClients.length / cards.length) * 100) : 0;
-
     const completedCards = (cards || []).filter(c => c.stamps >= (shop?.card_stamps_required || 10));
-    const pointsPerEuro = shop?.points_per_euro || 1;
     const avgTicket = 15;
     const estimatedRevenue = Math.round(allEvents?.length * avgTicket);
-
     const weekGrowth = lastWeekEvents?.length > 0 
       ? Math.round(((events?.length - lastWeekEvents?.length) / lastWeekEvents?.length) * 100)
       : events?.length > 0 ? 100 : 0;
-
     res.json({
       stampsByDay: days.map((d, i) => ({ day: d, count: stampsByDay[i] })),
       topClients,
@@ -306,72 +289,84 @@ app.get('/stats/:shop_id', async (req, res) => {
   }
 });
 
+// Apple Wallet Push Updates
+app.post('/v1/devices/:deviceId/registrations/:passTypeId/:serialNumber', async (req, res) => {
+  try {
+    const { serialNumber } = req.params;
+    const pushToken = req.body.pushToken;
+    const card_id = serialNumber.split('_')[0];
+    await supabase.from('loyalty_cards').update({ push_token: pushToken }).eq('id', card_id);
+    res.status(201).send();
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/v1/devices/:deviceId/registrations/:passTypeId/:serialNumber', async (req, res) => {
+  res.status(200).send();
+});
+
+app.get('/v1/passes/:passTypeId/:serialNumber', async (req, res) => {
+  const { serialNumber } = req.params;
+  const card_id = serialNumber.split('_')[0];
+  res.redirect(`https://fideleasy-backend-production.up.railway.app/pass/apple/${card_id}`);
+});
+
 // Générer une vraie carte Apple Wallet
 app.get('/pass/apple/:card_id', async (req, res) => {
   try {
-   
     const { card_id } = req.params;
-    
     const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
     const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
-
-    // Générer strip
     const stripImageBuffer = await generateStripImage(shop);
-
-    // Créer le pass directement
-// Générer logo dynamique pour ce commerce
-const logoCanvas = createCanvas(160, 160);
-const lCtx = logoCanvas.getContext('2d');
-lCtx.clearRect(0, 0, 160, 160);
-lCtx.fillStyle = '#d4af37';
-lCtx.beginPath();
-lCtx.arc(80, 80, 76, 0, Math.PI * 2);
-lCtx.fill();
-const shopInitial = (shop?.card_logo_text || shop?.name || 'F')[0].toUpperCase();
-lCtx.fillStyle = '#0a0a18';
-lCtx.font = 'bold 80px Arial';
-lCtx.textAlign = 'center';
-lCtx.textBaseline = 'middle';
-lCtx.fillText(shopInitial, 80, 80);
-const logoBuffer = logoCanvas.toBuffer('image/png');
-// Adapter affichage selon loyalty_type
-const isPoints = shop?.loyalty_type === 'points';
-const primaryValue = isPoints ? card.points.toString() : `${card.stamps}/${shop?.card_stamps_required || 10}`;
-const primaryLabel = isPoints ? 'Points' : 'Tampons';
-
-const pass = new PKPass({
-  'pass.json': Buffer.from(JSON.stringify({
-    formatVersion: 1,
-    passTypeIdentifier: 'pass.com.fideleasy',
-    serialNumber: `${card_id}_${Date.now()}`,
-    teamIdentifier: 'Q7XBK68TWG',
-    backgroundColor: shop?.card_color || 'rgb(10, 10, 24)',
-    foregroundColor: 'rgb(255, 255, 255)',
-    labelColor: 'rgb(212, 175, 55)',
-    logoText: shop?.card_logo_text || shop?.name || 'FidelEasy',
-    organizationName: shop?.name || 'FidelEasy',
-    description: `Carte de fidélité ${shop?.name || 'FidelEasy'}`,
-    storeCard: {
-      primaryFields: [{ key: 'balance', label: primaryLabel, value: primaryValue }],
-      secondaryFields: [{ key: 'member', label: 'Membre', value: customer ? customer.name : 'Client' }],
-    }
-  })),
-  'strip.png': stripImageBuffer,
-  'strip@2x.png': stripImageBuffer,
-  'logo.png': logoBuffer,
-  'logo@2x.png': logoBuffer,
-  'icon.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon.png'),
-  'icon@2x.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon@2x.png'),
-}, {
-  wwdr: fs.readFileSync('/app/certs/wwdr_clean.pem'),
-  signerCert: fs.readFileSync('/app/certs/pass_clean.pem'),
-  signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
-  signerKeyPassphrase: '123456'
-});
-
+    const logoCanvas = createCanvas(160, 160);
+    const lCtx = logoCanvas.getContext('2d');
+    lCtx.clearRect(0, 0, 160, 160);
+    lCtx.fillStyle = '#d4af37';
+    lCtx.beginPath();
+    lCtx.arc(80, 80, 76, 0, Math.PI * 2);
+    lCtx.fill();
+    const shopInitial = (shop?.card_logo_text || shop?.name || 'F')[0].toUpperCase();
+    lCtx.fillStyle = '#0a0a18';
+    lCtx.font = 'bold 80px Arial';
+    lCtx.textAlign = 'center';
+    lCtx.textBaseline = 'middle';
+    lCtx.fillText(shopInitial, 80, 80);
+    const logoBuffer = logoCanvas.toBuffer('image/png');
+    const isPoints = shop?.loyalty_type === 'points';
+    const primaryValue = isPoints ? card.points.toString() : `${card.stamps}/${shop?.card_stamps_required || 10}`;
+    const primaryLabel = isPoints ? 'Points' : 'Tampons';
+    const pass = new PKPass({
+      'pass.json': Buffer.from(JSON.stringify({
+        formatVersion: 1,
+        passTypeIdentifier: 'pass.com.fideleasy',
+        serialNumber: `${card_id}_${Date.now()}`,
+        teamIdentifier: 'Q7XBK68TWG',
+        webServiceURL: 'https://fideleasy-backend-production.up.railway.app',
+        authenticationToken: card_id,
+        backgroundColor: shop?.card_color || 'rgb(10, 10, 24)',
+        foregroundColor: 'rgb(255, 255, 255)',
+        labelColor: 'rgb(212, 175, 55)',
+        logoText: shop?.card_logo_text || shop?.name || 'FidelEasy',
+        organizationName: shop?.name || 'FidelEasy',
+        description: `Carte de fidélité ${shop?.name || 'FidelEasy'}`,
+        storeCard: {
+          primaryFields: [{ key: 'balance', label: primaryLabel, value: primaryValue }],
+          secondaryFields: [{ key: 'member', label: 'Membre', value: customer ? customer.name : 'Client' }],
+        }
+      })),
+      'logo.png': logoBuffer,
+      'logo@2x.png': logoBuffer,
+      'icon.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon.png'),
+      'icon@2x.png': fs.readFileSync('/app/passes/FidelEasy.pass/icon@2x.png'),
+    }, {
+      wwdr: fs.readFileSync('/app/certs/wwdr_clean.pem'),
+      signerCert: fs.readFileSync('/app/certs/pass_clean.pem'),
+      signerKey: fs.readFileSync('/app/certs/pass_clean.key'),
+      signerKeyPassphrase: '123456'
+    });
     const buffer = pass.getAsBuffer();
-    
     res.set({
       'Content-Type': 'application/vnd.apple.pkpass',
       'Content-Disposition': `attachment; filename="fideleasy.pkpass"`,
@@ -382,32 +377,15 @@ const pass = new PKPass({
     res.status(400).json({ error: err.message, stack: err.stack });
   }
 });
-    
-    
+
 // Inscription commerçant
 app.post('/auth/register', async (req, res) => {
   try {
     const { email, password, shop_name } = req.body;
-    
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password
-    });
-    
+    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
     if (authError) throw authError;
-    
-    const { data: shop, error: shopError } = await supabase
-      .from('shops')
-      .insert([{ 
-        name: shop_name, 
-        email, 
-        plan: 'starter',
-        user_id: authData.user.id 
-      }])
-      .select();
-    
+    const { data: shop, error: shopError } = await supabase.from('shops').insert([{ name: shop_name, email, plan: 'starter', user_id: authData.user.id }]).select();
     if (shopError) throw shopError;
-    
     res.json({ message: 'Compte créé !', user: authData.user, shop });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -418,38 +396,23 @@ app.post('/auth/register', async (req, res) => {
 app.post('/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    
-    const { data: shop } = await supabase
-      .from('shops')
-      .select('*')
-      .eq('user_id', data.user.id)
-      .single();
-    
-    res.json({ 
-      message: 'Connecté !', 
-      token: data.session.access_token,
-      user: data.user,
-      shop 
-    });
+    const { data: shop } = await supabase.from('shops').select('*').eq('user_id', data.user.id).single();
+    res.json({ message: 'Connecté !', token: data.session.access_token, user: data.user, shop });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-});// Google Wallet
-const { GoogleAuth } = require('google-auth-library');
+});
 
+// Google Wallet
+const { GoogleAuth } = require('google-auth-library');
 const GOOGLE_ISSUER_ID = 'BCR2DN7T7C24DWR7';
 const GOOGLE_CLASS_ID = `${GOOGLE_ISSUER_ID}.fideleasy_loyalty`;
 
 async function getGoogleAuthClient() {
   const auth = new GoogleAuth({
- credentials: JSON.parse(Buffer.from(process.env.GOOGLE_WALLET_KEY, 'base64').toString()),
+    credentials: JSON.parse(Buffer.from(process.env.GOOGLE_WALLET_KEY, 'base64').toString()),
     scopes: ['https://www.googleapis.com/auth/wallet_object.issuer']
   });
   return auth.getClient();
@@ -458,17 +421,11 @@ async function getGoogleAuthClient() {
 app.get('/pass/google/:card_id', async (req, res) => {
   try {
     const { card_id } = req.params;
-    
     const { data: card } = await supabase.from('loyalty_cards').select('*').eq('id', card_id).single();
     const { data: customer } = await supabase.from('customers').select('*').eq('id', card.customer_id).single();
-    console.log('Customer trouvé:', customer);
-console.log('Card trouvée:', card);
     const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
-
     const authClient = await getGoogleAuthClient();
     const token = await authClient.getAccessToken();
-
-    // Créer la classe si elle n'existe pas
     try {
       await fetch(`https://walletobjects.googleapis.com/walletobjects/v1/loyaltyClass/${GOOGLE_CLASS_ID}`, {
         headers: { 'Authorization': `Bearer ${token.token}` }
@@ -488,8 +445,6 @@ console.log('Card trouvée:', card);
         }
       });
     } catch(e) {}
-
-    // Créer l'objet pass
     const objectId = `${GOOGLE_ISSUER_ID}.${card_id}`;
     const passObject = {
       id: objectId,
@@ -500,12 +455,9 @@ console.log('Card trouvée:', card);
       loyaltyPoints: { label: 'Points', balance: { int: card.points || 0 } },
       secondaryLoyaltyPoints: { label: 'Tampons', balance: { string: `${card.stamps || 0}/10` } }
     };
-
-    // Créer ou mettre à jour l'objet
     const objRes = await fetch(`https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}`, {
       headers: { 'Authorization': `Bearer ${token.token}` }
     });
-    
     if (objRes.status === 404) {
       await fetch('https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject', {
         method: 'POST',
@@ -513,56 +465,50 @@ console.log('Card trouvée:', card);
         body: JSON.stringify(passObject)
       });
     }
-
-    // Générer le lien JWT
     const jwt = require('jsonwebtoken');
-     const key = JSON.parse(Buffer.from(process.env.GOOGLE_WALLET_KEY, 'base64').toString());
-    
+    const key = JSON.parse(Buffer.from(process.env.GOOGLE_WALLET_KEY, 'base64').toString());
     const claims = {
       iss: key.client_email,
       aud: 'google',
       typ: 'savetowallet',
       payload: { loyaltyObjects: [{ id: objectId }] }
     };
-    
     const token_jwt = jwt.sign(claims, key.private_key, { algorithm: 'RS256' });
     const saveUrl = `https://pay.google.com/gp/v/save/${token_jwt}`;
-    
     res.json({ saveUrl });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-});// Stripe
+});
+
+// Stripe
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-
 const PLANS = {
   starter: process.env.STRIPE_PRICE_STARTER,
   pro: process.env.STRIPE_PRICE_PRO,
   business: process.env.STRIPE_PRICE_BUSINESS
 };
 
-// Créer une session de paiement
 app.post('/stripe/checkout', async (req, res) => {
   try {
     const { plan, shop_id } = req.body;
-    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
       line_items: [{ price: PLANS[plan], quantity: 1 }],
-      success_url: 'https://fideleasy-dashboard.vercel.app/dashboard?success=true',
-      cancel_url: 'https://fideleasy-dashboard.vercel.app/dashboard?cancelled=true',
+      success_url: 'https://fideleasy.app/dashboard?success=true',
+      cancel_url: 'https://fideleasy.app/dashboard?cancelled=true',
       metadata: { shop_id, plan }
     });
-    
     res.json({ url: session.url });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-});// Notifications Push APNs
-const apn = require('@parse/node-apn');
+});
 
+// Notifications Push APNs
+const apn = require('@parse/node-apn');
 const apnProvider = new apn.Provider({
   token: {
     key: '/app/certs/AuthKey_JW6GJSYM9L.p8',
@@ -585,22 +531,21 @@ app.post('/push/send', async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-});// Mettre à jour un commerce
+});
+
+// Mettre à jour un commerce
 app.patch('/shops/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    const { data, error } = await supabase
-      .from('shops')
-      .update(updates)
-      .eq('id', id)
-      .select();
+    const { data, error } = await supabase.from('shops').update(updates).eq('id', id).select();
     if (error) throw error;
     res.json({ message: 'Commerce mis à jour !', data });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
+
 app.listen(PORT, () => {
   console.log(`FidelEasy API démarrée sur le port ${PORT}`);
 });
