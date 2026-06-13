@@ -515,7 +515,7 @@ const apnProvider = new apn.Provider({
     keyId: 'JW6GJSYM9L',
     teamId: 'Q7XBK68TWG'
   },
-  production: false
+  production: true
 });
 
 app.post('/push/send', async (req, res) => {
