@@ -43,7 +43,6 @@ async function generateStripImage(shop) {
   grad1.addColorStop(1, 'rgba(0,0,0,0.75)');
   ctx.fillStyle = grad1;
   ctx.fillRect(0, 0, width, height);
-  const shopName = shop?.card_logo_text || shop?.name || 'FidelEasy';
   const stampsRequired = shop?.card_stamps_required || 10;
   const remaining = stampsRequired;
   const message = remaining > 0 ? `Encore ${remaining} visite${remaining > 1 ? 's' : ''} !` : '🎉 Récompense disponible !';
@@ -54,6 +53,39 @@ async function generateStripImage(shop) {
   ctx.font = 'bold 72px Arial';
   ctx.fillText(message, 60, height - 40);
   return canvas.toBuffer('image/png');
+}
+
+// PassKit API helper
+async function createPassKitMember(programId, memberData) {
+  const response = await fetch(`https://api.passkit.net/v1/members`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.PASSKIT_API_TOKEN}`
+    },
+    body: JSON.stringify({
+      programId,
+      tierId: 'classic',
+      memberDetails: {
+        displayName: memberData.name,
+        emailAddress: memberData.email || '',
+        mobileNumber: memberData.phone || ''
+      }
+    })
+  });
+  return response.json();
+}
+
+async function updatePassKitMember(memberId, points) {
+  const response = await fetch(`https://api.passkit.net/v1/members/${memberId}/points/earn`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.PASSKIT_API_TOKEN}`
+    },
+    body: JSON.stringify({ points })
+  });
+  return response.json();
 }
 
 app.get('/', (req, res) => {
@@ -117,9 +149,40 @@ app.post('/customers', async (req, res) => {
 app.post('/cards', async (req, res) => {
   try {
     const { customer_id, shop_id, wallet_type } = req.body;
+
+    // Récupérer les infos du client et du shop
+    const { data: customer } = await supabase.from('customers').select('*').eq('id', customer_id).single();
+    const { data: shop } = await supabase.from('shops').select('*').eq('id', shop_id).single();
+
+    // Créer la carte en base
     const { data, error } = await supabase.from('loyalty_cards').insert([{ customer_id, shop_id, wallet_type, stamps: 0, points: 0 }]).select();
     if (error) throw error;
-    res.json({ message: 'Carte créée !', data });
+
+    const card = data[0];
+    let passkit_member_id = null;
+    let wallet_url = null;
+
+    // Si le shop a un passkit_program_id, créer un membre PassKit
+    if (shop?.passkit_program_id) {
+      try {
+        const pkMember = await createPassKitMember(shop.passkit_program_id, {
+          name: customer?.name || 'Client',
+          email: customer?.email || '',
+          phone: customer?.phone || ''
+        });
+        passkit_member_id = pkMember.id || pkMember.memberId;
+        wallet_url = pkMember.appleWalletUrl || pkMember.googleWalletUrl || null;
+
+        // Sauvegarder le member ID dans la carte
+        if (passkit_member_id) {
+          await supabase.from('loyalty_cards').update({ passkit_member_id }).eq('id', card.id);
+        }
+      } catch(e) {
+        console.log('Erreur PassKit:', e.message);
+      }
+    }
+
+    res.json({ message: 'Carte créée !', data, passkit_member_id, wallet_url });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -176,6 +239,15 @@ app.post('/cards/:id/stamp', async (req, res) => {
       customer_id: card.customer_id,
       card_id: id
     }]);
+
+    // Mettre à jour PassKit si member_id existe
+    if (card.passkit_member_id) {
+      try {
+        await updatePassKitMember(card.passkit_member_id, 1);
+      } catch(e) {
+        console.log('Erreur update PassKit:', e.message);
+      }
+    }
 
     // Push update Apple Wallet
     if (card.push_token) {
