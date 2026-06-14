@@ -21,6 +21,7 @@
     "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.3",
     "passkit-generator": "^3.5.7",
+    "passkit-node-sdk": "^1.1.123",
     "qrcode": "^1.5.4",
     "stripe": "^22.1.0"
   }

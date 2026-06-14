@@ -55,13 +55,18 @@ async function generateStripImage(shop) {
   return canvas.toBuffer('image/png');
 }
 
-// PassKit API helper
+// PassKit REST API helper
+function getPassKitAuthHeader() {
+  const credentials = Buffer.from(`${process.env.PASSKIT_REST_KEY}:${process.env.PASSKIT_REST_SECRET}`).toString('base64');
+  return `Basic ${credentials}`;
+}
+
 async function createPassKitMember(programId, memberData) {
-  const response = await fetch(`https://api.passkit.net/v1/members`, {
+  const response = await fetch(`https://api.passkit.com/v1/members`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.PASSKIT_API_TOKEN}`
+      'Authorization': getPassKitAuthHeader()
     },
     body: JSON.stringify({
       programId,
@@ -73,15 +78,17 @@ async function createPassKitMember(programId, memberData) {
       }
     })
   });
-  return response.json();
+  const data = await response.json();
+  console.log('PassKit response:', JSON.stringify(data));
+  return data;
 }
 
 async function updatePassKitMember(memberId, points) {
-  const response = await fetch(`https://api.passkit.net/v1/members/${memberId}/points/earn`, {
+  const response = await fetch(`https://api.passkit.com/v1/members/${memberId}/points/earn`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.PASSKIT_API_TOKEN}`
+      'Authorization': getPassKitAuthHeader()
     },
     body: JSON.stringify({ points })
   });
