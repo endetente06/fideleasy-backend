@@ -69,7 +69,7 @@ function getPassKitJWT() {
 
 async function createPassKitMember(programId, memberData) {
   const token = getPassKitJWT();
-  const response = await fetch(`https://api.pub1.passkit.io/members/enrol`, {
+  const response = await fetch(`https://api.pub1.passkit.io/members`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
