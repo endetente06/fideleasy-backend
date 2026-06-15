@@ -62,19 +62,19 @@ function getPassKitAuthHeader() {
 }
 
 async function createPassKitMember(programId, memberData) {
-  const response = await fetch(`https://api.passkit.com/v1/members`, {
+  const token = getPassKitJWT();
+  const response = await fetch(`https://api.pub1.passkit.io/members/enrol`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': getPassKitAuthHeader()
+      'Authorization': token
     },
     body: JSON.stringify({
       programId,
       tierId: 'classic',
-      memberDetails: {
+      person: {
         displayName: memberData.name,
-        emailAddress: memberData.email || '',
-        mobileNumber: memberData.phone || ''
+        emailAddress: memberData.email || ''
       }
     })
   });
@@ -84,7 +84,7 @@ async function createPassKitMember(programId, memberData) {
 }
 
 async function updatePassKitMember(memberId, points) {
-  const response = await fetch(`https://api.passkit.com/v1/members/${memberId}/points/earn`, {
+  const response = await fetch(`https://api.pub1.passkit.io/v1/members/${memberId}/points/earn`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
