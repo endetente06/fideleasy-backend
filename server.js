@@ -6,6 +6,7 @@ const QRCode = require('qrcode');
 const { PKPass } = require('passkit-generator');
 const fs = require('fs');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -55,10 +56,15 @@ async function generateStripImage(shop) {
   return canvas.toBuffer('image/png');
 }
 
-// PassKit REST API helper
-function getPassKitAuthHeader() {
-  const credentials = Buffer.from(`${process.env.PASSKIT_REST_KEY}:${process.env.PASSKIT_REST_SECRET}`).toString('base64');
-  return `Basic ${credentials}`;
+// PassKit JWT Auth
+function getPassKitJWT() {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    uid: process.env.PASSKIT_REST_KEY,
+    iat: now,
+    exp: now + 3600
+  };
+  return jwt.sign(payload, process.env.PASSKIT_REST_SECRET, { algorithm: 'HS256' });
 }
 
 async function createPassKitMember(programId, memberData) {
@@ -84,11 +90,12 @@ async function createPassKitMember(programId, memberData) {
 }
 
 async function updatePassKitMember(memberId, points) {
-  const response = await fetch(`https://api.pub1.passkit.io/v1/members/${memberId}/points/earn`, {
+  const token = getPassKitJWT();
+  const response = await fetch(`https://api.pub1.passkit.io/members/${memberId}/points/earn`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': getPassKitAuthHeader()
+      'Authorization': token
     },
     body: JSON.stringify({ points })
   });
@@ -156,20 +163,13 @@ app.post('/customers', async (req, res) => {
 app.post('/cards', async (req, res) => {
   try {
     const { customer_id, shop_id, wallet_type } = req.body;
-
-    // Récupérer les infos du client et du shop
     const { data: customer } = await supabase.from('customers').select('*').eq('id', customer_id).single();
     const { data: shop } = await supabase.from('shops').select('*').eq('id', shop_id).single();
-
-    // Créer la carte en base
     const { data, error } = await supabase.from('loyalty_cards').insert([{ customer_id, shop_id, wallet_type, stamps: 0, points: 0 }]).select();
     if (error) throw error;
-
     const card = data[0];
     let passkit_member_id = null;
     let wallet_url = null;
-
-    // Si le shop a un passkit_program_id, créer un membre PassKit
     if (shop?.passkit_program_id) {
       try {
         const pkMember = await createPassKitMember(shop.passkit_program_id, {
@@ -179,8 +179,6 @@ app.post('/cards', async (req, res) => {
         });
         passkit_member_id = pkMember.id || pkMember.memberId;
         wallet_url = pkMember.appleWalletUrl || pkMember.googleWalletUrl || null;
-
-        // Sauvegarder le member ID dans la carte
         if (passkit_member_id) {
           await supabase.from('loyalty_cards').update({ passkit_member_id }).eq('id', card.id);
         }
@@ -188,7 +186,6 @@ app.post('/cards', async (req, res) => {
         console.log('Erreur PassKit:', e.message);
       }
     }
-
     res.json({ message: 'Carte créée !', data, passkit_member_id, wallet_url });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -221,7 +218,6 @@ app.post('/cards/:id/stamp', async (req, res) => {
     const { id } = req.params;
     const { data: card, error: fetchError } = await supabase.from('loyalty_cards').select('*').eq('id', id).single();
     if (fetchError) throw fetchError;
-
     if (card.last_stamp_at) {
       const lastStamp = new Date(card.last_stamp_at);
       const now = new Date();
@@ -232,7 +228,6 @@ app.post('/cards/:id/stamp', async (req, res) => {
         });
       }
     }
-
     const newStamps = card.stamps + 1;
     const { data, error } = await supabase
       .from('loyalty_cards')
@@ -240,14 +235,11 @@ app.post('/cards/:id/stamp', async (req, res) => {
       .eq('id', id)
       .select();
     if (error) throw error;
-
     await supabase.from('stamp_events').insert([{
       shop_id: card.shop_id,
       customer_id: card.customer_id,
       card_id: id
     }]);
-
-    // Mettre à jour PassKit si member_id existe
     if (card.passkit_member_id) {
       try {
         await updatePassKitMember(card.passkit_member_id, 1);
@@ -255,8 +247,6 @@ app.post('/cards/:id/stamp', async (req, res) => {
         console.log('Erreur update PassKit:', e.message);
       }
     }
-
-    // Push update Apple Wallet
     if (card.push_token) {
       try {
         const notification = new apn.Notification();
@@ -267,7 +257,6 @@ app.post('/cards/:id/stamp', async (req, res) => {
         console.log('Erreur push Apple Wallet:', e.message);
       }
     }
-
     res.json({ message: `Tampon ajouté ! Total: ${newStamps}`, data });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -544,7 +533,6 @@ app.get('/pass/google/:card_id', async (req, res) => {
         body: JSON.stringify(passObject)
       });
     }
-    const jwt = require('jsonwebtoken');
     const key = JSON.parse(Buffer.from(process.env.GOOGLE_WALLET_KEY, 'base64').toString());
     const claims = {
       iss: key.client_email,
