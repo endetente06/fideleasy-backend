@@ -56,28 +56,17 @@ async function generateStripImage(shop) {
   return canvas.toBuffer('image/png');
 }
 
-// PassKit JWT Auth
-function getPassKitJWT() {
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    uid: process.env.PASSKIT_REST_KEY,
-    iat: now,
-    exp: now + 3600
-  };
-  return jwt.sign(payload, process.env.PASSKIT_REST_SECRET, { algorithm: 'HS256' });
-}
-
+// PassKit - Long-lived token
 async function createPassKitMember(programId, memberData) {
-  const token = getPassKitJWT();
-  const response = await fetch(`https://api.pub1.passkit.io/members`, {
-    method: 'POST',
+  const response = await fetch(`https://api.pub1.passkit.io/members/member`, {
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': token
+      'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
     body: JSON.stringify({
       programId,
-      tierId: 'base',
+      externalId: memberData.email || memberData.name,
       person: {
         displayName: memberData.name,
         emailAddress: memberData.email || ''
@@ -90,14 +79,19 @@ async function createPassKitMember(programId, memberData) {
 }
 
 async function updatePassKitMember(memberId, points) {
-  const token = getPassKitJWT();
-  const response = await fetch(`https://api.pub1.passkit.io/members/${memberId}/points/earn`, {
+  const response = await fetch(`https://api.pub1.passkit.io/members/member/points/earn`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': token
+      'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
-    body: JSON.stringify({ points })
+    body: JSON.stringify({
+      memberId,
+      points: {
+        type: 'BALANCE_TYPE_POINTS',
+        value: points
+      }
+    })
   });
   return response.json();
 }
@@ -223,8 +217,8 @@ app.post('/cards/:id/stamp', async (req, res) => {
       const now = new Date();
       const diffMinutes = (now - lastStamp) / 1000 / 60;
       if (diffMinutes < 60) {
-        return res.status(429).json({ 
-          error: `Tampon refusé ! Dernier tampon il y a ${Math.floor(diffMinutes)} minutes. Attendez ${Math.floor(60 - diffMinutes)} minutes.` 
+        return res.status(429).json({
+          error: `Tampon refusé ! Dernier tampon il y a ${Math.floor(diffMinutes)} minutes. Attendez ${Math.floor(60 - diffMinutes)} minutes.`
         });
       }
     }
@@ -336,7 +330,7 @@ app.get('/stats/:shop_id', async (req, res) => {
     const completedCards = (cards || []).filter(c => c.stamps >= (shop?.card_stamps_required || 10));
     const avgTicket = 15;
     const estimatedRevenue = Math.round(allEvents?.length * avgTicket);
-    const weekGrowth = lastWeekEvents?.length > 0 
+    const weekGrowth = lastWeekEvents?.length > 0
       ? Math.round(((events?.length - lastWeekEvents?.length) / lastWeekEvents?.length) * 100)
       : events?.length > 0 ? 100 : 0;
     res.json({
