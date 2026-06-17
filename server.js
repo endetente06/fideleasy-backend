@@ -77,7 +77,7 @@ async function createPassKitMember(programId, memberData) {
     },
     body: JSON.stringify({
       programId,
-      tierId: 'classic',
+      tierId: 'base',
       person: {
         displayName: memberData.name,
         emailAddress: memberData.email || ''
