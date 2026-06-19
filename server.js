@@ -59,7 +59,7 @@ async function generateStripImage(shop) {
 // PassKit - Long-lived token
 async function createPassKitMember(programId, memberData) {
   const response = await fetch(`https://api.pub1.passkit.io/members/member`, {
-    method: 'PUT',
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
