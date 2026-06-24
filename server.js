@@ -58,6 +58,7 @@ async function generateStripImage(shop) {
 
 // PassKit - Long-lived token
 async function createPassKitMember(programId, memberData) {
+  const externalId = memberData.email || `${Date.now()}@fideleasy.app`;
   const response = await fetch(`https://api.pub1.passkit.io/members/member`, {
     method: 'POST',
     headers: {
@@ -65,17 +66,35 @@ async function createPassKitMember(programId, memberData) {
       'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
     body: JSON.stringify({
-  programId,
-  tierId: 'base',
-  externalId: memberData.email || `${Date.now()}@fideleasy.app`,
-  person: {
-    displayName: memberData.name,
-    emailAddress: memberData.email || `${Date.now()}@fideleasy.app`
-  }
-})
+      programId,
+      tierId: 'base',
+      externalId,
+      person: {
+        displayName: memberData.name,
+        emailAddress: externalId
+      }
+    })
   });
   const data = await response.json();
   console.log('PassKit response:', JSON.stringify(data));
+
+  // Récupérer les liens Wallet
+  if (data.id) {
+    try {
+      const linksRes = await fetch(`https://api.pub1.passkit.io/members/member/links/${data.id}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
+        }
+      });
+      const links = await linksRes.json();
+      console.log('PassKit links:', JSON.stringify(links));
+      data.appleWalletUrl = links.iosSmartpassLink || links.appleWalletUrl || null;
+      data.googleWalletUrl = links.androidSmartpassLink || links.googleWalletUrl || null;
+    } catch(e) {
+      console.log('Erreur PassKit links:', e.message);
+    }
+  }
+
   return data;
 }
 
