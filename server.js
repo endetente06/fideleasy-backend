@@ -65,14 +65,14 @@ async function createPassKitMember(programId, memberData) {
       'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
     body: JSON.stringify({
-      programId,
-      tierId: 'base',
-      externalId: memberData.email || memberData.name,
-      person: {
-        displayName: memberData.name,
-        emailAddress: memberData.email || ''
-      }
-    })
+  programId,
+  tierId: 'base',
+  externalId: memberData.email || `${Date.now()}@fideleasy.app`,
+  person: {
+    displayName: memberData.name,
+    emailAddress: memberData.email || `${Date.now()}@fideleasy.app`
+  }
+})
   });
   const data = await response.json();
   console.log('PassKit response:', JSON.stringify(data));
