@@ -78,21 +78,11 @@ async function createPassKitMember(programId, memberData) {
   const data = await response.json();
   console.log('PassKit response:', JSON.stringify(data));
 
-  // Récupérer les liens Wallet
+  // Construire les liens Wallet directement avec l'ID membre
   if (data.id) {
-    try {
-      const linksRes = await fetch(`https://api.pub1.passkit.io/members/member/links/${data.id}`, {
-        headers: {
-          'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
-        }
-      });
-      const links = await linksRes.json();
-      console.log('PassKit links:', JSON.stringify(links));
-      data.appleWalletUrl = links.iosSmartpassLink || links.appleWalletUrl || null;
-      data.googleWalletUrl = links.androidSmartpassLink || links.googleWalletUrl || null;
-    } catch(e) {
-      console.log('Erreur PassKit links:', e.message);
-    }
+    data.appleWalletUrl = `https://pub1.pskt.io/${data.id}.pkpass`;
+    data.googleWalletUrl = `https://pub1.pskt.io/${data.id}.gpay`;
+    console.log('PassKit wallet URL:', `https://pub1.pskt.io/${data.id}`);
   }
 
   return data;
