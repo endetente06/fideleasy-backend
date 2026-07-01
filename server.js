@@ -305,8 +305,7 @@ app.get('/notifications/:shop_id', async (req, res) => {
 app.get('/qrcode/:shop_id', async (req, res) => {
   try {
     const { shop_id } = req.params;
-    const url = `https://fideleasy.app/join/${shop_id}`;
-    const qrCode = await QRCode.toDataURL(url);
+const url = `https://fideleasy-dashboard.vercel.app/join/${shop_id}`;    const qrCode = await QRCode.toDataURL(url);
     res.json({ qrCode, url });
   } catch (err) {
     res.status(400).json({ error: err.message });
