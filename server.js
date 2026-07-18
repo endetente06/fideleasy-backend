@@ -87,15 +87,7 @@ async function createPassKitMember(programId, memberData) {
 
   return data;
 }
-console.log('card.passkit_member_id:', card.passkit_member_id);
-if (card.passkit_member_id) {
-  console.log('Calling updatePassKitMember...');
-  try {
-    await updatePassKitMember(card.passkit_member_id, 1);
-  } catch(e) {
-    console.log('Erreur update PassKit:', e.message);
-  }
-}
+
 async function updatePassKitMember(memberId, points) {
   const response = await fetch(`https://api.pub1.passkit.io/members/member/points/earn`, {
     method: 'PUT',
@@ -254,6 +246,15 @@ app.post('/cards/:id/stamp', async (req, res) => {
       customer_id: card.customer_id,
       card_id: id
     }]);
+    console.log('card.passkit_member_id:', card.passkit_member_id);
+if (card.passkit_member_id) {
+  console.log('Calling updatePassKitMember...');
+  try {
+    await updatePassKitMember(card.passkit_member_id, 1);
+  } catch(e) {
+    console.log('Erreur update PassKit:', e.message);
+  }
+}
     if (card.passkit_member_id) {
       try {
         await updatePassKitMember(card.passkit_member_id, 1);
