@@ -96,10 +96,8 @@ async function updatePassKitMember(memberId, points) {
       'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
     body: JSON.stringify({
-  memberId,
-  earn: {
-    points: points
-  }
+  memberId: memberId,
+  points: points
 })
   });
   const data = await response.json();
