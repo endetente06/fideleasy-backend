@@ -66,14 +66,15 @@ async function createPassKitMember(programId, memberData) {
       'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
     body: JSON.stringify({
-      programId,
-      tierId: 'base',
-      externalId,
-      person: {
-        displayName: memberData.name,
-        emailAddress: externalId
-      }
-    })
+  programId,
+  tierId: 'base',
+  externalId,
+  person: {
+    displayName: memberData.name,
+    emailAddress: externalId
+  },
+  secondaryPoints: memberData.stampsRequired || 10
+})
   });
   const data = await response.json();
   console.log('PassKit response:', JSON.stringify(data));
@@ -176,10 +177,11 @@ app.post('/cards', async (req, res) => {
     if (shop?.passkit_program_id) {
       try {
         const pkMember = await createPassKitMember(shop.passkit_program_id, {
-          name: customer?.name || 'Client',
-          email: customer?.email || '',
-          phone: customer?.phone || ''
-        });
+  name: customer?.name || 'Client',
+  email: customer?.email || '',
+  phone: customer?.phone || '',
+  stampsRequired: shop?.card_stamps_required || 10
+});
         passkit_member_id = pkMember.id || pkMember.memberId;
         wallet_url = pkMember.appleWalletUrl || pkMember.googleWalletUrl || null;
         if (passkit_member_id) {
