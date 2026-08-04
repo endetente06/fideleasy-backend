@@ -73,8 +73,7 @@ async function createPassKitMember(programId, memberData) {
     displayName: memberData.name,
     emailAddress: externalId
   },
-  secondaryPoints: memberData.stampsRequired || 10
-})
+secondaryPoints: Math.round(memberData.stampsRequired || 10)})
   });
   const data = await response.json();
   console.log('PassKit response:', JSON.stringify(data));
@@ -98,7 +97,7 @@ async function updatePassKitMember(memberId, points) {
     },
     body: JSON.stringify({
   id: memberId,
-  points: 1
+  points: Math.round(points)
 })
   });
   const data = await response.json();
@@ -245,7 +244,7 @@ app.post('/cards/:id/stamp', async (req, res) => {
       customer_id: card.customer_id,
       card_id: id
     }]);
-    
+
     if (card.passkit_member_id) {
       try {
         await updatePassKitMember(card.passkit_member_id, 1);
