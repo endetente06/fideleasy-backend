@@ -79,7 +79,7 @@ secondaryPoints: Math.round(memberData.stampsRequired || 10)})
   console.log('PassKit response:', JSON.stringify(data));
 
   // Construire les liens Wallet directement avec l'ID membre
-  if (data.id) {
+ if (data.id) {
     data.appleWalletUrl = `https://pub1.pskt.io/${data.id}.pkpass`;
     data.googleWalletUrl = `https://pub1.pskt.io/${data.id}.gpay`;
     console.log('PassKit wallet URL:', `https://pub1.pskt.io/${data.id}`);
@@ -92,13 +92,13 @@ secondaryPoints: Math.round(memberData.stampsRequired || 10)})
       },
       body: JSON.stringify({
         id: data.id,
-        metaData: [
-          { key: "tampons_affichage", value: `0/${memberData.stampsRequired || 10}` }
-        ]
+        metaData: {
+          "tampons_affichage": `0/${memberData.stampsRequired || 10}`
+        }
       })
     });
-    const metaData = await metaRes.json();
-    console.log('PassKit metaData response:', JSON.stringify(metaData));
+    const metaResult = await metaRes.json();
+    console.log('PassKit metaData response:', JSON.stringify(metaResult));
   }
 
   return data;
@@ -127,9 +127,9 @@ async function updatePassKitMember(memberId, newStamps, stampsRequired) {
     },
     body: JSON.stringify({
       id: memberId,
-      metaData: [
-  { key: "tampons_affichage", value: `${newStamps}/${stampsRequired || 10}` }
-]
+      metaData: {
+        "tampons_affichage": `${newStamps}/${stampsRequired || 10}`
+      }
     })
   });
 
