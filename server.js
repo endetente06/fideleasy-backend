@@ -73,32 +73,17 @@ async function createPassKitMember(programId, memberData) {
     displayName: memberData.name,
     emailAddress: externalId
   },
-secondaryPoints: String(memberData.stampsRequired || 10)})
+  secondaryPoints: memberData.stampsRequired || 10
+})
   });
   const data = await response.json();
   console.log('PassKit response:', JSON.stringify(data));
 
   // Construire les liens Wallet directement avec l'ID membre
- if (data.id) {
+  if (data.id) {
     data.appleWalletUrl = `https://pub1.pskt.io/${data.id}.pkpass`;
     data.googleWalletUrl = `https://pub1.pskt.io/${data.id}.gpay`;
     console.log('PassKit wallet URL:', `https://pub1.pskt.io/${data.id}`);
-    
-    const metaRes = await fetch(`https://api.pub1.passkit.io/members/member`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
-      },
-      body: JSON.stringify({
-        id: data.id,
-        metaData: {
-          "": `0/${memberData.stampsRequired || 10}`
-        }
-      })
-    });
-    const metaResult = await metaRes.json();
-    console.log('PassKit metaData response:', JSON.stringify(metaResult));
   }
 
   return data;
@@ -112,9 +97,9 @@ async function updatePassKitMember(memberId, points) {
       'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
     body: JSON.stringify({
-      id: memberId,
-      points: "1"
-    })
+  id: memberId,
+  points: 1
+})
   });
   const data = await response.json();
   console.log('PassKit update response:', JSON.stringify(data));
@@ -255,14 +240,20 @@ app.post('/cards/:id/stamp', async (req, res) => {
       .eq('id', id)
       .select();
     if (error) throw error;
-    const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
-    console.log('shop récupéré:', shop?.id, shop?.card_stamps_required);
     await supabase.from('stamp_events').insert([{
       shop_id: card.shop_id,
       customer_id: card.customer_id,
       card_id: id
     }]);
-
+    console.log('card.passkit_member_id:', card.passkit_member_id);
+if (card.passkit_member_id) {
+  console.log('Calling updatePassKitMember...');
+  try {
+    await updatePassKitMember(card.passkit_member_id, 1);
+  } catch(e) {
+    console.log('Erreur update PassKit:', e.message);
+  }
+}
     if (card.passkit_member_id) {
       try {
         await updatePassKitMember(card.passkit_member_id, 1);
