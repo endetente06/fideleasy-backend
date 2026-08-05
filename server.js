@@ -83,6 +83,21 @@ secondaryPoints: Math.round(memberData.stampsRequired || 10)})
     data.appleWalletUrl = `https://pub1.pskt.io/${data.id}.pkpass`;
     data.googleWalletUrl = `https://pub1.pskt.io/${data.id}.gpay`;
     console.log('PassKit wallet URL:', `https://pub1.pskt.io/${data.id}`);
+    
+    // Mettre à jour le metaData séparément
+    await fetch(`https://api.pub1.passkit.io/members/member`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
+      },
+      body: JSON.stringify({
+        id: data.id,
+        metaData: [
+          { key: "tampons_affichage", value: `0/${memberData.stampsRequired || 10}` }
+        ]
+      })
+    });
   }
 
   return data;
