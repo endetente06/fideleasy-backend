@@ -73,7 +73,7 @@ async function createPassKitMember(programId, memberData) {
     displayName: memberData.name,
     emailAddress: externalId
   },
-secondaryPoints: Math.round(memberData.stampsRequired || 10)})
+secondaryPoints: String(memberData.stampsRequired || 10)})
   });
   const data = await response.json();
   console.log('PassKit response:', JSON.stringify(data));
@@ -113,7 +113,7 @@ async function updatePassKitMember(memberId, points) {
     },
     body: JSON.stringify({
       id: memberId,
-      points: 1
+      points: "1"
     })
   });
   const data = await response.json();
