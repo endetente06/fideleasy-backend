@@ -119,7 +119,7 @@ async function updatePassKitMember(memberId, newStamps, stampsRequired) {
   const data = await response.json();
 
   // Mettre à jour le metaData avec l'affichage formaté
-  await fetch(`https://api.pub1.passkit.io/members/member`, {
+  const metaRes = await fetch(`https://api.pub1.passkit.io/members/member`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -132,6 +132,8 @@ async function updatePassKitMember(memberId, newStamps, stampsRequired) {
       }
     })
   });
+  const metaResult = await metaRes.json();
+  console.log('PassKit metaData update response:', JSON.stringify(metaResult));
 
   console.log('PassKit update response:', JSON.stringify(data));
   return data;
