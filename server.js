@@ -93,7 +93,7 @@ secondaryPoints: Math.round(memberData.stampsRequired || 10)})
       body: JSON.stringify({
         id: data.id,
         metaData: {
-          "tampons_affichage": `0/${memberData.stampsRequired || 10}`
+          "": `0/${memberData.stampsRequired || 10}`
         }
       })
     });
@@ -104,7 +104,7 @@ secondaryPoints: Math.round(memberData.stampsRequired || 10)})
   return data;
 }
 
-async function updatePassKitMember(memberId, newStamps, stampsRequired) {
+async function updatePassKitMember(memberId, points) {
   const response = await fetch(`https://api.pub1.passkit.io/members/member/points/earn`, {
     method: 'PUT',
     headers: {
@@ -113,28 +113,10 @@ async function updatePassKitMember(memberId, newStamps, stampsRequired) {
     },
     body: JSON.stringify({
       id: memberId,
-      points: Math.round(newStamps)
+      points: 1
     })
   });
   const data = await response.json();
-
-  // Mettre à jour le metaData avec l'affichage formaté
-  const metaRes = await fetch(`https://api.pub1.passkit.io/members/member`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
-    },
-    body: JSON.stringify({
-      id: memberId,
-      metaData: {
-        "tampons_affichage": `${newStamps}/${stampsRequired || 10}`
-      }
-    })
-  });
-  const metaResult = await metaRes.json();
-  console.log('PassKit metaData update response:', JSON.stringify(metaResult));
-
   console.log('PassKit update response:', JSON.stringify(data));
   return data;
 }
@@ -283,7 +265,7 @@ app.post('/cards/:id/stamp', async (req, res) => {
 
     if (card.passkit_member_id) {
       try {
-        await updatePassKitMember(card.passkit_member_id, newStamps, shop?.card_stamps_required || 10);
+        await updatePassKitMember(card.passkit_member_id, 1);
       } catch(e) {
         console.log('Erreur update PassKit:', e.message);
       }
