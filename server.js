@@ -84,8 +84,7 @@ secondaryPoints: Math.round(memberData.stampsRequired || 10)})
     data.googleWalletUrl = `https://pub1.pskt.io/${data.id}.gpay`;
     console.log('PassKit wallet URL:', `https://pub1.pskt.io/${data.id}`);
     
-    // Mettre à jour le metaData séparément
-    await fetch(`https://api.pub1.passkit.io/members/member`, {
+    const metaRes = await fetch(`https://api.pub1.passkit.io/members/member`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -98,6 +97,8 @@ secondaryPoints: Math.round(memberData.stampsRequired || 10)})
         ]
       })
     });
+    const metaData = await metaRes.json();
+    console.log('PassKit metaData response:', JSON.stringify(metaData));
   }
 
   return data;
