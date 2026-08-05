@@ -271,6 +271,8 @@ app.post('/cards/:id/stamp', async (req, res) => {
       .eq('id', id)
       .select();
     if (error) throw error;
+    const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
+    console.log('shop récupéré:', shop?.id, shop?.card_stamps_required);
     await supabase.from('stamp_events').insert([{
       shop_id: card.shop_id,
       customer_id: card.customer_id,
