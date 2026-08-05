@@ -111,9 +111,9 @@ async function updatePassKitMember(memberId, newStamps, stampsRequired) {
     },
     body: JSON.stringify({
       id: memberId,
-      metaData: {
-        tampons_affichage: `${newStamps}/${stampsRequired || 10}`
-      }
+      metaData: [
+  { key: "tampons_affichage", value: `${newStamps}/${stampsRequired || 10}` }
+]
     })
   });
 
