@@ -25,9 +25,6 @@ async function generateStripImage(shop) {
   const height = 432;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
-  const { PKPass } = require('passkit-generator');
-  const fs = require('fs');
-  const path = require('path');
   ctx.fillStyle = '#0a0a18';
   ctx.fillRect(0, 0, width, height);
   if (shop?.card_image_url) {
@@ -45,8 +42,7 @@ async function generateStripImage(shop) {
   ctx.fillStyle = grad1;
   ctx.fillRect(0, 0, width, height);
   const stampsRequired = shop?.card_stamps_required || 10;
-  const remaining = stampsRequired;
-  const message = remaining > 0 ? `Encore ${remaining} visite${remaining > 1 ? 's' : ''} !` : '🎉 Récompense disponible !';
+  const message = `Encore ${stampsRequired} visite${stampsRequired > 1 ? 's' : ''} !`;
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.font = 'bold 28px Arial';
   ctx.fillText('CARTE DE FIDÉLITÉ', 60, height - 110);
@@ -59,6 +55,8 @@ async function generateStripImage(shop) {
 // PassKit - Long-lived token
 async function createPassKitMember(programId, memberData) {
   const externalId = memberData.email || `${Date.now()}@fideleasy.app`;
+  const stampsRequired = memberData.stampsRequired || 10;
+
   const response = await fetch(`https://api.pub1.passkit.io/members/member`, {
     method: 'POST',
     headers: {
@@ -66,30 +64,44 @@ async function createPassKitMember(programId, memberData) {
       'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
     body: JSON.stringify({
-  programId,
-  tierId: 'base',
-  externalId,
-  person: {
-    displayName: memberData.name,
-    emailAddress: externalId
-  },
-  secondaryPoints: memberData.stampsRequired || 10
-})
+      programId,
+      tierId: 'base',
+      externalId,
+      person: {
+        displayName: memberData.name,
+        emailAddress: externalId
+      },
+      secondaryPoints: stampsRequired
+    })
   });
   const data = await response.json();
   console.log('PassKit response:', JSON.stringify(data));
 
-  // Construire les liens Wallet directement avec l'ID membre
   if (data.id) {
     data.appleWalletUrl = `https://pub1.pskt.io/${data.id}.pkpass`;
     data.googleWalletUrl = `https://pub1.pskt.io/${data.id}.gpay`;
     console.log('PassKit wallet URL:', `https://pub1.pskt.io/${data.id}`);
+
+    // Mettre à jour le metaData avec l'affichage formaté
+    const metaRes = await fetch(`https://api.pub1.passkit.io/members/member`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
+      },
+      body: JSON.stringify({
+        id: data.id,
+        metaData: { "tamponsAffichage": `0/${stampsRequired}` }
+      })
+    });
+    const metaResult = await metaRes.json();
+    console.log('PassKit metaData response:', JSON.stringify(metaResult));
   }
 
   return data;
 }
 
-async function updatePassKitMember(memberId, points) {
+async function updatePassKitMember(memberId, newStamps, stampsRequired) {
   const response = await fetch(`https://api.pub1.passkit.io/members/member/points/earn`, {
     method: 'PUT',
     headers: {
@@ -97,12 +109,28 @@ async function updatePassKitMember(memberId, points) {
       'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
     },
     body: JSON.stringify({
-  id: memberId,
-  points: 1
-})
+      id: memberId,
+      points: 1
+    })
   });
   const data = await response.json();
   console.log('PassKit update response:', JSON.stringify(data));
+
+  // Mettre à jour le metaData
+  const metaRes = await fetch(`https://api.pub1.passkit.io/members/member`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.PASSKIT_LONG_TOKEN}`
+    },
+    body: JSON.stringify({
+      id: memberId,
+      metaData: { "tamponsAffichage": `${newStamps}/${stampsRequired || 10}` }
+    })
+  });
+  const metaResult = await metaRes.json();
+  console.log('PassKit metaData update response:', JSON.stringify(metaResult));
+
   return data;
 }
 
@@ -177,11 +205,11 @@ app.post('/cards', async (req, res) => {
     if (shop?.passkit_program_id) {
       try {
         const pkMember = await createPassKitMember(shop.passkit_program_id, {
-  name: customer?.name || 'Client',
-  email: customer?.email || '',
-  phone: customer?.phone || '',
-  stampsRequired: shop?.card_stamps_required || 10
-});
+          name: customer?.name || 'Client',
+          email: customer?.email || '',
+          phone: customer?.phone || '',
+          stampsRequired: shop?.card_stamps_required || 10
+        });
         passkit_member_id = pkMember.id || pkMember.memberId;
         wallet_url = pkMember.appleWalletUrl || pkMember.googleWalletUrl || null;
         if (passkit_member_id) {
@@ -240,27 +268,24 @@ app.post('/cards/:id/stamp', async (req, res) => {
       .eq('id', id)
       .select();
     if (error) throw error;
+
+    const { data: shop } = await supabase.from('shops').select('*').eq('id', card.shop_id).single();
+    console.log('shop récupéré:', shop?.id, shop?.card_stamps_required);
+
     await supabase.from('stamp_events').insert([{
       shop_id: card.shop_id,
       customer_id: card.customer_id,
       card_id: id
     }]);
-    console.log('card.passkit_member_id:', card.passkit_member_id);
-if (card.passkit_member_id) {
-  console.log('Calling updatePassKitMember...');
-  try {
-    await updatePassKitMember(card.passkit_member_id, 1);
-  } catch(e) {
-    console.log('Erreur update PassKit:', e.message);
-  }
-}
+
     if (card.passkit_member_id) {
       try {
-        await updatePassKitMember(card.passkit_member_id, 1);
+        await updatePassKitMember(card.passkit_member_id, newStamps, shop?.card_stamps_required || 10);
       } catch(e) {
         console.log('Erreur update PassKit:', e.message);
       }
     }
+
     if (card.push_token) {
       try {
         const notification = new apn.Notification();
@@ -315,8 +340,8 @@ app.get('/notifications/:shop_id', async (req, res) => {
 app.get('/qrcode/:shop_id', async (req, res) => {
   try {
     const { shop_id } = req.params;
-const url = `https://fideleasy.app/join/${shop_id}`;
-const qrCode = await QRCode.toDataURL(url);
+    const url = `https://fideleasy.app/join/${shop_id}`;
+    const qrCode = await QRCode.toDataURL(url);
     res.json({ qrCode, url });
   } catch (err) {
     res.status(400).json({ error: err.message });
